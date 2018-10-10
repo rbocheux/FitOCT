@@ -266,7 +266,7 @@ for (dataDir in dataDirs) {
     tag = paste0('GP_',dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')
 
-    # Get Data ####
+    # Get Data
     D = read.csv(paste0(dataDir,'/',dataSet,'/Courbe.csv'))
     x=D[,1]; y=D[,2]
     sel = x > 20 & x<=500 # Exclude aberrant points
