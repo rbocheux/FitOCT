@@ -18,4 +18,3 @@ model {
   for (n in 1:N)
     y[n] ~ normal(0., sig[n]);
 }
-

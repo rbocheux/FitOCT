@@ -114,6 +114,9 @@ fitMonoExp <- function(x, y, uy, tag,
 
     sink(file = paste0('Results/controleExp_',tag,'.txt'))
     print(fit,pars=c(parOpt,'br'))
+    ndf = stanData$N - stanData$Np
+    CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
+    cat('CI95 for br: ',CI95)
     sink()
 
     parP = c('theta')
@@ -129,6 +132,7 @@ fitMonoExp <- function(x, y, uy, tag,
     # Estimate decay params
     theta   = extract(fit,'theta')[[1]]
     theta0  = colMeans(theta)
+    thetaCor= cor(theta)
 
   } else {
 
@@ -136,28 +140,40 @@ fitMonoExp <- function(x, y, uy, tag,
                      data = stanData,
                      init = init,
                      as_vector = FALSE,
-                     verbose   = FALSE)
+                     verbose   = FALSE,
+                     hessian   = TRUE )
 
     sink(file = paste0('Results/controleExp_',tag,'.txt'))
     cat('theta  :',fit$par$theta,'\n')
     cat('br     :',fit$par$br,'\n')
+    ndf = stanData$N - stanData$Np
+    CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
+    cat('CI95 for br: ',CI95)
     sink()
 
     # Estimate decay params
     theta0  = fit$par$theta
+    thetaCor= cov2cor(solve(-fit$hessian))
 
   }
-  return(list(fit = fit, best.theta = theta0))
+  return(list(fit = fit, best.theta = theta0, cor.theta = thetaCor))
 }
 
 fitExpGP <- function(x, y, uy, tag,
                      Nn = 10, # Nb of control points
-                     theta0 = NULL, ru_theta    = 0.1, # Theta prior
+                     theta0 = NULL, cor_theta = NULL, ru_theta    = 0.1, # Theta prior
+                     lambda_scale = 0.1, # Scale of ctrl points prior
                      model = modExpGP,
                      sample = FALSE, # Flag MCMC / optimize
                      iter = 10000,   # Max. iterations of optimizer
+                     prior_PD = 0,   # Flag to sample from prior only
                      nb_chains = 4, nb_warmup = 500,
                      nb_iter = nb_warmup + 500) {
+
+  # Adjust tag
+  tag1 = tag
+  if(prior_PD != 0)
+    tag1=paste0('priPD_',tag)
 
   # Grid of GP control points
   dx  = diff(range(x))/(Nn+1)
@@ -166,6 +182,9 @@ fitExpGP <- function(x, y, uy, tag,
   # Initial monoexp params
   if(is.null(theta0))
     theta0 = c(min(y),max(y)-min(y),mean(x))
+
+  if(is.null(cor_theta))
+    cor_theta = diag(1,length(theta0))
 
   stanData = list(
     N =length(x),
@@ -176,20 +195,25 @@ fitExpGP <- function(x, y, uy, tag,
     alpha_scale = 0.1,
     rho_scale   = 0.1,
     theta0      = theta0,
-    ru_theta    = ru_theta
+    cor_theta   = cor_theta,
+    ru_theta    = ru_theta,
+    prior_PD    = prior_PD,
+    lambda_scale= lambda_scale
   )
 
   init = list(
     theta  = theta0,
     yGP    = 0.01*rnorm(Nn),
-    lambda = 20.0,
+    lambda = 10.0,
     sigma  = 1.0
   )
 
 
   if(sample) {
     parOpt = c('theta','yGP','lambda','sigma')
-    pars   = c(parOpt,'resid','br','m','dL')
+    pars   = parOpt
+    if(prior_PD == 0)
+      pars   = c(pars,'resid','br','m','dL')
 
     fit = sampling(model,
                    data = stanData,
@@ -200,14 +224,22 @@ fitExpGP <- function(x, y, uy, tag,
                    warmup = nb_warmup, verbose=FALSE)
 
 
-    sink(file = paste0('Results/controleGP_',tag,'.txt'))
-    print(fit,pars=c(parOpt,'br'))
+    sink(file = paste0('Results/controleGP_',tag1,'.txt'))
+    pars   = parOpt
+    if(prior_PD == 0)
+      pars=c(parOpt,'br')
+    print(fit,pars=pars)
+    if(prior_PD == 0) {
+      ndf = stanData$N - stanData$Np - stanData$Nn - 2
+      CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
+      cat('CI95 for br: ',CI95)
+    }
     sink()
 
     parP = c('theta','lambda','sigma')
     S = as.matrix(fit,pars=c(parP,'lp__'))
 
-    pdf(file = paste0('Results/controleGP_',tag,'.pdf'))
+    pdf(file = paste0('Results/controleGP_',tag1,'.pdf'))
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = parOpt))
     pairs(fit, pars = c(parP,'lp__'), gap=0)
     pairs(fit, pars = c('yGP','lp__'), gap=0)
@@ -240,22 +272,40 @@ fitExpGP <- function(x, y, uy, tag,
                        iter = iter,
                        refresh = 500)
 
-    sink(file = paste0('Results/controleGP_',tag,'.txt'))
+    sink(file = paste0('Results/controleGP_',tag1,'.txt'))
     cat('theta  :',fit$par$theta,'\n')
     cat('yGP    :',fit$par$yGP,'\n')
     cat('lambda :',fit$par$lambda,'\n')
     cat('sigma  :',fit$par$sigma,'\n')
-    cat('br     :',fit$par$br,'\n')
+    if(prior_PD == 0) {
+      cat('br     :',fit$par$br,'\n')
+      ndf = stanData$N - stanData$Np - stanData$Nn - 2
+      CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
+      cat('CI95 for br: ',CI95)
+    }
     sink()
 
   }
 
-  return(list(fit = fit, sample = sample, xGP = xGP))
+  return(list(fit = fit, sample = sample, xGP = xGP, prior_PD = prior_PD))
+}
+
+# Misc. functions ####
+plotPriPos <- function(pri,pos,tag,xlim=range(c(pri,pos))) {
+  d = density(pri)
+  d$y = d$y/max(d$y)
+  plot(d, type = 'l', col = cols[4],
+       main = tag,
+       xlab = '', xlim = xlim,
+       ylab = 'Norm. density', ylim = c(0,1.1))
+  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[4],border=NA)
+  d = density(pos)
+  d$y = d$y/max(d$y)
+  lines(d$x,d$y,col=cols[6])
+  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[6],border=NA)
 }
 
 # RUN ####
-
-setwd("~/Bureau/Collabs/Romain")
 dataDirs = c("DataWl","Data1","DataSynth")
 for (dataDir in dataDirs) {
 
@@ -280,13 +330,52 @@ for (dataDir in dataDirs) {
     # Inference of exponential decay parameters
     fitm   = fitMonoExp(x, y, uy, tag)
     theta0 = fitm$best.theta   # Used by next stage
+    cor.theta = fitm$cor.theta
     source ("./plotMonoExp.R")
 
     # Inference of modulated decay parameters
+    # - Prior (Predictive) Distribution
+    fitGP_pri = fitExpGP(x, y, uy, tag,
+                         sample = TRUE,
+                         theta0 = theta0,
+                         cor_theta = cor.theta,
+                         ru_theta = 0.05,
+                         prior_PD = 1,
+                         lambda_scale=0.2)
+    fitOut = fitGP_pri; source ("./plotExpGP.R")
+
+    # - Posterior Distribution
     fitGP = fitExpGP(x, y, uy, tag,
                      sample = TRUE,
-                     theta0 = theta0)
-    source ("./plotExpGP.R")
+                     theta0 = theta0,
+                     cor_theta = cor.theta,
+                     ru_theta = 0.05,
+                     prior_PD = 0,
+                     lambda_scale=0.2)
+    fitOut = fitGP    ; source ("./plotExpGP.R")
+
+    # - Compare prior/posterior marginal pdfs
+    theta_pri   = extract(fitGP_pri$fit,'theta')[[1]]
+    yGP_pri     = extract(fitGP_pri$fit,'yGP')[[1]]
+    lambda_pri  = extract(fitGP_pri$fit,'lambda')[[1]]
+    sigma_pri   = extract(fitGP_pri$fit,'sigma')[[1]]
+    theta_pos   = extract(fitGP$fit,'theta')[[1]]
+    yGP_pos     = extract(fitGP$fit,'yGP')[[1]]
+    lambda_pos  = extract(fitGP$fit,'lambda')[[1]]
+    sigma_pos   = extract(fitGP$fit,'sigma')[[1]]
+    png(filename = paste0('Results/pripos_',tag,'.png'),
+        width=2000, height=2000)
+    par(mfrow=c(4,4),pty='s',yaxs='i',
+        mar=c(1.5,3,1.6,.2),mgp=c(2,.75,0),tcl=-0.5,
+        lwd=6, cex=3.5)
+    for(i in 1:ncol(theta_pri))
+      plotPriPos(theta_pri[,i],theta_pos[,i],paste0('theta_',i))
+    plotPriPos(lambda_pri,lambda_pos,'lambda')
+    plotPriPos(sigma_pri,sigma_pos,'sigma')
+    for(i in 1:ncol(yGP_pri))
+      plotPriPos(yGP_pri[,i],yGP_pos[,i],paste0('yGP_',i),0.5*c(-1,1))
+    dev.off()
+
 
   }
 }

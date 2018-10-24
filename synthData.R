@@ -1,4 +1,4 @@
-setwd('~/Bureau/Collabs/Romain/')
+# Generate synthetic datasets for FitOCT
 
 x  = 20:500
 a  = 1000
@@ -16,19 +16,6 @@ lines(x,y0,col=2)
 write.csv(cbind(x,y),file = 'DataSynth/monoExp/Courbe.csv',
           row.names = FALSE)
 
-# Sinc-Modulated exponential ####
-m  = 10 * sin(x/25) / x
-y1 =  a + b*exp(-x/(l0*(1+m)))
-y = y1 + rnorm(length(x), 0, s*sqrt(y0-a+1))
-
-plot(x,y,pch=20)
-lines(x,y1,col=4,lwd=2)
-lines(x,y0,col=2,lwd=2)
-
-write.csv(cbind(x,y),file = 'DataSynth/sincExp1/Courbe.csv',
-          row.names = FALSE)
-write.csv(cbind(x,m),file = 'DataSynth/sincExp1/Modulation.csv',
-          row.names = FALSE)
 
 # Sinc-Modulated exponential ####
 m  = 10 * sin(x/50) / x
@@ -42,6 +29,20 @@ lines(x,y0,col=2,lwd=2)
 write.csv(cbind(x,y),file = 'DataSynth/sincExp/Courbe.csv',
           row.names = FALSE)
 write.csv(cbind(x,m),file = 'DataSynth/sincExp/Modulation.csv',
+          row.names = FALSE)
+
+# Sinc-Modulated exponential ####
+m  = 10 * sin(x/25) / x
+y1 =  a + b*exp(-x/(l0*(1+m)))
+y = y1 + rnorm(length(x), 0, s*sqrt(y0-a+1))
+
+plot(x,y,pch=20)
+lines(x,y1,col=4,lwd=2)
+lines(x,y0,col=2,lwd=2)
+
+write.csv(cbind(x,y),file = 'DataSynth/sincExp1/Courbe.csv',
+          row.names = FALSE)
+write.csv(cbind(x,m),file = 'DataSynth/sincExp1/Modulation.csv',
           row.names = FALSE)
 
 # Sinc-Modulated exponential ####

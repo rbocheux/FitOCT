@@ -64,18 +64,26 @@ data {
   // Decay model
   int<lower=1>        Np;       // Nb params in decay
   vector<lower=0>[Np] theta0;   // Reference Decay parameters
+  corr_matrix[Np]     cor_theta;// Prior Correlation matrix
   real<lower=0>       ru_theta; // Relative uncert. on theta0
 
   // GP
-  int<lower=0>       Nn;          // Nb controle points for GP
-  real               xGP[Nn];     // GP controle positions
+  int<lower=0>       Nn;          // Nb. of control points (CP) for GP
+  real               xGP[Nn];     // GP CP positions
   real<lower=0>      alpha_scale; // GP normalized S.D.
   real<lower=0>      rho_scale;   // GP correl. length in [0,1]
+  real<lower=0>      lambda_scale;// Scale of CP S.D.
 
+  // Control
+  int<lower=0, upper = 1> prior_PD; // Prior predictive distribution
 }
 transformed data {
   real x_scaled[N];
   real xGP_scaled[Nn];
+  cov_matrix[Np] Sigma0;
+
+  // Prior covariance matrix
+  Sigma0 = quad_form_diag(cor_theta, ru_theta*theta0);
 
   // Rescale positions for dimensionless GP
   for(n in 1:N)
@@ -92,17 +100,22 @@ parameters {
 }
 transformed parameters {
   real<lower=0> alpha = alpha_scale * sd(yGP);
-  vector[N]     dL    = inhomo(x_scaled,yGP,xGP_scaled,alpha,rho_scale);
-  vector[N]     m     = phys_mod(x,theta,dL);
+  vector[N]     dL;
+  vector[N]     m;
   vector[N]     resid;
 
-  for (n in 1:N)
-    resid[n] = (y[n] - m[n]); // Rediduals
+  if(prior_PD == 0) {
+    dL    = inhomo(x_scaled,yGP,xGP_scaled,alpha,rho_scale);
+    m     = phys_mod(x,theta,dL);
+    for (n in 1:N)
+      resid[n] = (y[n] - m[n]); // Rediduals
+  }
+
 }
 model {
 
   // Hierarchical Prior for Lasso (adapted from Mallick2014 and ARD)
-  lambda   ~ gamma(1, 0.1);
+  lambda   ~ gamma(1, lambda_scale);
   for (n in 1:Nn)
     u[n]   ~ gamma(1, lambda);
   for (n in 1:Nn)
@@ -112,17 +125,21 @@ model {
   sigma ~ normal(1,0.1);
 
   // Exp. decay parameters
-  for (n in 1:Np)
-    theta[n] ~ normal(theta0[n],ru_theta*theta0[n]);
+  theta ~ multi_normal(theta0,Sigma0);
 
   // Likelihood
-  for (n in 1:N)
-    0 ~ normal(resid[n], sigma*uy[n]);
+  if(prior_PD == 0) {
+    for (n in 1:N)
+      0 ~ normal(resid[n], sigma*uy[n]);
+  }
 
 }
 generated quantities{
-  // Birge Ratio
-  real br = quad_form(inverse(diag_matrix(uy .* uy)),resid)
-         / (N-(Np+Nn+1));
+  real br;
+  if(prior_PD == 0) {
+    // Birge Ratio
+    br = quad_form(inverse(sigma^2 * diag_matrix(uy .* uy)),resid)
+       / (N-(Np+Nn+2));
+  }
 }
 

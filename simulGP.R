@@ -1,3 +1,5 @@
+# Generate GP on [0,1] with different parameters
+
 library(RandomFields)
 RFoptions(spConform=FALSE)
 library(inlmisc)

@@ -1,4 +1,5 @@
-setwd("~/Bureau/Collabs/Romain")
+# Assess the effect of parameter df in smooth.spline
+
 is=0
 dataDirs = c("DataWl","Data1","DataSynth")[3]
 for (dataDir in dataDirs) {
@@ -15,7 +16,7 @@ for (dataDir in dataDirs) {
 
     stat = c()
     i=0
-    dfs = 2:30
+    dfs = 2:20
     for(df in dfs) {
       ySpl = smooth.spline(x,y,df=df)$y
       resSpl = y-ySpl
@@ -23,7 +24,8 @@ for (dataDir in dataDirs) {
     }
 
     if(is==1)
-      plot(dfs,stat/stat[1],type='l',ylim=c(0,1))
+      plot(dfs,stat/stat[1],type='l',ylim=c(0,1),
+           xlab = 'df', ylab= 'sd(residuals)')
     else
       lines(dfs,stat/stat[1],col=is)
 
