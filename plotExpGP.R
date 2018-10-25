@@ -1,7 +1,7 @@
 nMC = 100  # Nb of plotted spaghetti lines
 
 fit      = fitOut$fit
-sample   = fitOut$sample
+method   = fitOut$method
 xGP      = fitOut$xGP
 prior_PD = fitOut$prior_PD
 
@@ -15,7 +15,7 @@ par(mfrow=c(2-prior_PD,2),pty='s',
     mar=c(3,3,1.6,.2),mgp=c(2,.75,0),tcl=-0.5,
     lwd=6, cex=3.5)
 
-if(sample) {
+if(method == 'sample' || method == 'vb') {
 
   theta   = extract(fit,'theta')[[1]]
   yGP     = extract(fit,'yGP')[[1]]
@@ -110,7 +110,6 @@ if(sample) {
          col=c(cols[6],cols[7],col_tr2[4])
   )
   box()
-
 
 } else {
 

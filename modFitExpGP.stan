@@ -35,16 +35,17 @@ functions{
   vector inhomo(real[] x,
                 vector yGP,
                 real[] xGP,
-                real alpha,
-                real rho) {
+                real   alpha,
+                real   rho
+                ) {
     vector[size(x)] dL = gp_pred(x,yGP,xGP,alpha,rho,1e-9);
     return dL;
   }
 
   // Modulated exponential decay
   vector phys_mod(real[] x, // positions
-                vector p,   // parameters
-                vector dL   // modulation vector
+                vector   p, // parameters
+                vector   dL // modulation vector
                 ) {
     int N = size(x);
     vector[N] m;
@@ -56,26 +57,26 @@ functions{
 }
 data {
   // Calibration dataset
-  int<lower=1>       N;
-  real               x[N];
-  vector[N]          y;
-  vector<lower=0>[N] uy;
+  int<lower=1>        N;
+  real                x[N];
+  vector[N]           y;
+  vector<lower=0>[N]  uy;
 
   // Decay model
-  int<lower=1>        Np;       // Nb params in decay
-  vector<lower=0>[Np] theta0;   // Reference Decay parameters
-  corr_matrix[Np]     cor_theta;// Prior Correlation matrix
-  real<lower=0>       ru_theta; // Relative uncert. on theta0
+  int<lower=1>        Np;          // Nb params in decay
+  vector<lower=0>[Np] theta0;      // Reference Decay parameters
+  corr_matrix[Np]     cor_theta;   // Prior Correlation matrix
+  real<lower=0>       ru_theta;    // Relative uncert. on theta0
 
   // GP
-  int<lower=0>       Nn;          // Nb. of control points (CP) for GP
-  real               xGP[Nn];     // GP CP positions
-  real<lower=0>      alpha_scale; // GP normalized S.D.
-  real<lower=0>      rho_scale;   // GP correl. length in [0,1]
-  real<lower=0>      lambda_scale;// Scale of CP S.D.
+  int<lower=0>        Nn;          // Nb. of control points (CP) for GP
+  real                xGP[Nn];     // GP CP positions
+  real<lower=0>       alpha_scale; // GP normalized S.D.
+  real<lower=0>       rho_scale;   // GP correl. length in [0,1]
+  real<lower=0>       lambda_rate; // Scale of CP S.D.
 
   // Control
-  int<lower=0, upper = 1> prior_PD; // Prior predictive distribution
+  int<lower=0,upper=1> prior_PD;   // Prior predictive distribution
 }
 transformed data {
   real x_scaled[N];
@@ -114,10 +115,11 @@ transformed parameters {
 }
 model {
 
-  // Hierarchical Prior for Lasso (adapted from Mallick2014 and ARD)
-  lambda   ~ gamma(1, lambda_scale);
+  // Hierarchical Prior for Bayesian Lasso
+  // (adapted from Mallick2014 and ARD)
+  lambda   ~ gamma(2, lambda_rate);
   for (n in 1:Nn)
-    u[n]   ~ gamma(1, lambda);
+    u[n]   ~ gamma(2, lambda);
   for (n in 1:Nn)
     yGP[n] ~ normal(0, u[n]);
 

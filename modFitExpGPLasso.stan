@@ -72,7 +72,7 @@ data {
   real               xGP[Nn];     // GP CP positions
   real<lower=0>      alpha_scale; // GP normalized S.D.
   real<lower=0>      rho_scale;   // GP correl. length in [0,1]
-  real<lower=0>      lambda_scale;// Scale of CP S.D.
+  real<lower=0>      lambda_rate; // Scale of CP S.D.
 
   // Control
   int<lower=0, upper = 1> prior_PD; // Prior predictive distribution
@@ -119,8 +119,7 @@ model {
   theta ~ multi_normal(theta0,Sigma0);
 
   // Lasso (cf. Stan manual Sec. 31.2)
-  for (n in 1:Nn)
-    target += - 1./lambda_scale * fabs(yGP[n]);
+  target += - sum(fabs(yGP)) / lambda_rate;
 
   // Likelihood
   if(prior_PD == 0) {
