@@ -7,7 +7,7 @@ prior_PD = fitOut$prior_PD
 
 tag1 = tag
 if(prior_PD != 0)
-  tag1=paste0('priPD_',tag)
+  tag1=paste0('priPD_',tag1)
 
 png(filename = paste0('Results/results_',tag1,'.png'),
     width=2000, height=1000*(2-prior_PD))
@@ -88,7 +88,7 @@ if(sample) {
         lines(x, dL[iMC[i],], col=col_tr[4])
   } else {
     plot(x, x, type = 'n',
-         ylim = c(-0.3,0.3),
+         ylim = 0.5*c(-1,1),
          col  = cols[4],
          main='Deviation from mean depth',
          xlab = 'depth (a.u.)',
@@ -155,7 +155,7 @@ if(sample) {
 
   # Local deviations
   plot(x, dL, type = 'l',
-       ylim = c(-0.3,0.3),
+       ylim = 0.5*c(-1,1),
        col  = cols[4],
        main='Deviation from mean depth',
        xlab = 'depth (a.u.)',
@@ -203,13 +203,13 @@ if(sample) {
 
 }
 
-# Plot true modulation for synthetic signals
-fName = paste0(dataDir,'/',dataSet,'/Modulation.csv')
-if(file.exists(fName)) {
-  M = read.csv(fName)
-  lines(M[,1],M[,2],lty=2)
+if(prior_PD == 0) {
+  # Plot true modulation for synthetic signals
+  fName = paste0(dataDir,'/',dataSet,'/Modulation.csv')
+  if(file.exists(fName)) {
+    M = read.csv(fName)
+    lines(M[,1],M[,2],lty=2)
+  }
 }
 
 dev.off()
-
-

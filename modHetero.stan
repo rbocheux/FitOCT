@@ -12,7 +12,7 @@ parameters {
 transformed parameters {
   vector[N] sig;
   for (n in 1:N)
-    sig[n] = theta[1]*exp(-x[n]/theta[2]);
+    sig[n] = theta[1] * exp(-x[n]/theta[2]);
 }
 model {
   for (n in 1:N)
