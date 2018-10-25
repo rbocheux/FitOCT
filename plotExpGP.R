@@ -1,15 +1,13 @@
-nMC = 100  # Nb of plotted spaghetti lines
+nMC = 100  # Nb spaghetti lines to plot (if any)
 
 fit      = fitOut$fit
 method   = fitOut$method
 xGP      = fitOut$xGP
 prior_PD = fitOut$prior_PD
+lasso    = fitOut$lasso
+tagOut   = fitOut$tag
 
-tag1 = tag
-if(prior_PD != 0)
-  tag1=paste0('priPD_',tag1)
-
-png(filename = paste0('Results/results_',tag1,'.png'),
+png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000*(2-prior_PD))
 par(mfrow=c(2-prior_PD,2),pty='s',
     mar=c(3,3,1.6,.2),mgp=c(2,.75,0),tcl=-0.5,

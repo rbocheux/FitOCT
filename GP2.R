@@ -52,12 +52,12 @@ estimateNoise <- function(x, y, tag, df = 15,
                    iter = nb_iter, chains = nb_chains,
                    warmup = nb_warmup, verbose=FALSE)
 
-    pdf(file = paste0('Results/controleResiduals_',tag,'.pdf'))
+    pdf(file = paste0('Results/',tag,'_NoiseEstim_sample_ctrl.pdf'))
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = parOpt))
     pairs(fit, pars = c(parOpt,'lp__'), gap=0)
     dev.off()
 
-    sink(file = paste0('Results/controleResiduals_',tag,'.txt'))
+    sink(file = paste0('Results/',tag,'_NoiseEstim_sample_ctrl.txt'))
     print(fit,pars=parOpt)
     sink()
     # Estimate data uncertainty
@@ -72,7 +72,7 @@ estimateNoise <- function(x, y, tag, df = 15,
                      as_vector = FALSE,
                      verbose   = TRUE)
 
-    sink(file = paste0('Results/controleResiduals_',tag,'.txt'))
+    sink(file = paste0('Results/',tag,'_NoiseEstim_optim_ctrl.txt'))
     cat('theta :',fit$par$theta)
     sink()
 
@@ -86,9 +86,14 @@ estimateNoise <- function(x, y, tag, df = 15,
 }
 
 fitMonoExp <- function(x, y, uy, tag,
-                       model = modExp, sample = FALSE,
+                       model = modExp,
+                       method = 'optim',
                        nb_chains = 4, nb_warmup = 500,
                        nb_iter = nb_warmup + 500) {
+
+  # Adjust tag to options
+  tag1 = method
+  tagOut = paste0('Results/',tag,'_MonoExp_',tag1)
 
   stanData = list(
     N =length(x),
@@ -100,7 +105,7 @@ fitMonoExp <- function(x, y, uy, tag,
     list(theta  = c(min(y),max(y)-min(y),mean(x)))
   }
 
-  if(sample) {
+  if(method == 'sample') {
     parOpt = c('theta')
     pars   = c(parOpt,'resid','m','br')
 
@@ -108,13 +113,12 @@ fitMonoExp <- function(x, y, uy, tag,
                    data = stanData,
                    pars = pars,
                    init = init,
-                   control = list(adapt_delta=0.99,
-                                  max_treedepth=12),
+                   control = list(adapt_delta=0.99, max_treedepth=12),
                    iter = nb_iter, chains = nb_chains,
                    warmup = nb_warmup, verbose=FALSE)
 
 
-    sink(file = paste0('Results/controleExp_',tag,'.txt'))
+    sink(file = paste0(tagOut,'_ctrl.txt'))
     print(fit,pars=c(parOpt,'br'))
     ndf = stanData$N - stanData$Np
     CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
@@ -124,7 +128,7 @@ fitMonoExp <- function(x, y, uy, tag,
     parP = c('theta')
     S = as.matrix(fit,pars=c(parP,'lp__'))
 
-    pdf(file = paste0('Results/controleExp_',tag,'.pdf'))
+    pdf(file = paste0(tagOut,'_ctrl.pdf'))
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = parOpt))
     pairs(fit, pars = c(parP,'lp__'), gap=0)
     par(mfrow=c(1,1),pty='m')
@@ -145,7 +149,7 @@ fitMonoExp <- function(x, y, uy, tag,
                      verbose   = FALSE,
                      hessian   = TRUE )
 
-    sink(file = paste0('Results/controleExp_',tag,'.txt'))
+    sink(file = paste0(tagOut,'_ctrl.txt'))
     cat('theta  :',fit$par$theta,'\n')
     cat('br     :',fit$par$br,'\n')
     ndf = stanData$N - stanData$Np
@@ -158,26 +162,33 @@ fitMonoExp <- function(x, y, uy, tag,
     thetaCor= cov2cor(solve(-fit$hessian))
 
   }
-  return(list(fit = fit, best.theta = theta0, cor.theta = thetaCor))
+  return(list(fit = fit, best.theta = theta0,
+              cor.theta = thetaCor, tag = tagOut))
 }
 
 fitExpGP <- function(x, y, uy, tag,
                      Nn = 10, # Nb of control points
                      theta0 = NULL, cor_theta = NULL, ru_theta    = 0.1, # Theta prior
                      lambda_rate = 0.1,    # Scale of ctrl points prior
+                     lasso     = FALSE,
                      model     = modExpGP,
                      method    = 'sample', # One of 'sample','optim','vb'
-                     lasso     = FALSE,
+                                           # Rq: 'vb' always fails !!!
                      iter      = 50000,    # Max. iterations of optimizer
                      prior_PD  = 0,        # Flag to sample from prior only
                      nb_chains = 4,
                      nb_warmup = 500,
                      nb_iter   = 1000) {
 
-  # Adjust tag
-  tag1 = tag
+  # Adjust tag to options
+  tag1 =''
   if(prior_PD != 0)
-    tag1=paste0('priPD_',tag)
+    tag1=paste0(tag1,'_priPD')
+  tag1 = paste0(tag1,'_',method)
+  if(lasso)
+    tag1=paste0(tag1,'_lasso')
+
+  tagOut = paste0('Results/',tag,'_ExpGP',tag1)
 
   # Grid of GP control points
   dx  = diff(range(x))/(Nn+1)
@@ -234,7 +245,7 @@ fitExpGP <- function(x, y, uy, tag,
                    iter = nb_iter, chains = nb_chains,
                    warmup = nb_warmup, verbose=FALSE)
 
-    sink(file = paste0('Results/controleGP_',tag1,'.txt'))
+    sink(file = paste0(tagOut,'_ctrl.txt'))
     pars   = parOpt
     if(prior_PD == 0)
       pars=c(parOpt,'br')
@@ -248,7 +259,7 @@ fitExpGP <- function(x, y, uy, tag,
 
     S = as.matrix(fit,pars=c(parP,'lp__'))
 
-    pdf(file = paste0('Results/controleGP_',tag1,'.pdf'))
+    pdf(file = paste0(tagOut,'_ctrl.pdf'))
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = parOpt))
     pairs(fit, pars = c(parP,'lp__'), gap=0)
     pairs(fit, pars = c('yGP','lp__'), gap=0)
@@ -267,7 +278,7 @@ fitExpGP <- function(x, y, uy, tag,
              output_samples = nb_iter - nb_warmup
     )
 
-    sink(file = paste0('Results/controleGP_',tag1,'.txt'))
+    sink(file = paste0(tagOut,'_ctrl.txt'))
     pars   = parOpt
     if(prior_PD == 0)
       pars=c(parOpt,'br')
@@ -281,7 +292,7 @@ fitExpGP <- function(x, y, uy, tag,
 
     S = as.matrix(fit,pars=c(parP,'lp__'))
 
-    pdf(file = paste0('Results/controleGP_',tag1,'.pdf'))
+    pdf(file = paste0(tagOut,'_ctrl.pdf'))
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = parOpt))
     par(mfrow=c(1,1),pty='m')
     rgumlib::SAPlot(S)
@@ -312,7 +323,7 @@ fitExpGP <- function(x, y, uy, tag,
                        iter = iter,
                        refresh = 500)
 
-    sink(file = paste0('Results/controleGP_',tag1,'.txt'))
+    sink(file = paste0(tagOut,'_ctrl.txt'))
     cat('theta  :',fit$par$theta,'\n')
     cat('yGP    :',fit$par$yGP,'\n')
     if(!lasso)
@@ -329,7 +340,7 @@ fitExpGP <- function(x, y, uy, tag,
   }
 
   return(list(fit = fit, method = method, xGP = xGP,
-              prior_PD = prior_PD, lasso = lasso))
+              prior_PD = prior_PD, lasso = lasso, tag = tagOut))
 }
 
 # Misc. functions ####
@@ -355,7 +366,7 @@ for (dataDir in dataDirs) {
 
   for(dataSet in dataSets) {
 
-    tag = paste0('GP_',dataDir,'_',dataSet)
+    tag = paste0(dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')
 
     # Get Data
@@ -378,7 +389,7 @@ for (dataDir in dataDirs) {
     # Inference of modulated decay parameters
     lambda_rate = 0.1
     ru_theta    = 0.05
-    lasso       = TRUE # Use lasso prior ?
+    lasso       = FALSE
     model       = modExpGP
     if(lasso)
       model     = modExpGPLasso
@@ -386,7 +397,7 @@ for (dataDir in dataDirs) {
     # - Prior (Predictive) Distribution
     fitGP_pri = fitExpGP(x, y, uy, tag,
                          method = 'sample',
-                         model = model,
+                         model  = model,
                          theta0 = theta0,
                          cor_theta = cor.theta,
                          ru_theta = ru_theta,
@@ -397,7 +408,7 @@ for (dataDir in dataDirs) {
 
     # - Posterior Distribution
     fitGP = fitExpGP(x, y, uy, tag,
-                     method = c('sample','optim','vb')[1],
+                     method = c('sample','optim','vb')[2],
                      model = model,
                      theta0 = theta0,
                      cor_theta = cor.theta,

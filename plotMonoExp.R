@@ -4,8 +4,9 @@ fit    = fitm$fit
 theta   = fit$par$theta
 resid   = fit$par$resid
 mod     = fit$par$m
+tagOut  = fitm$tag
 
-png(filename = paste0('Results/resultsExp_',tag,'.png'),
+png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000)
 par(mfrow=c(1,2),pty='s',
     mar=c(3,3,1.6,.2),mgp=c(2,.75,0),tcl=-0.5,
