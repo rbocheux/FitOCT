@@ -17,6 +17,7 @@ functions{
     {
       matrix[N1, N1] L_K;
       vector[N1] K_div_y1;
+      vector[N1] K_div_y2;
       matrix[N1, N2] k_x1_x2;
       matrix[N1, N1] K;
       K        = cov_exp_quad(x1, alpha, rho);
@@ -24,9 +25,9 @@ functions{
         K[n, n] = K[n, n] + delta;
       L_K      = cholesky_decompose(K);
       K_div_y1 = mdivide_left_tri_low(L_K, y1);
-      K_div_y1 = mdivide_right_tri_low(K_div_y1',L_K)';
+      K_div_y2 = mdivide_right_tri_low(K_div_y1',L_K)';
       k_x1_x2  = cov_exp_quad(x1, x2, alpha, rho);
-      f2_mu    = (k_x1_x2' * K_div_y1);
+      f2_mu    = (k_x1_x2' * K_div_y2);
     }
     return f2_mu;
   }

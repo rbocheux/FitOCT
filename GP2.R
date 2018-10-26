@@ -167,11 +167,13 @@ fitMonoExp <- function(x, y, uy, tag,
 }
 
 fitExpGP <- function(x, y, uy, tag,
-                     Nn = 10, # Nb of control points
-                     theta0 = NULL, cor_theta = NULL, ru_theta    = 0.1, # Theta prior
+                     Nn        = 10,       # Nb of control points
+                     theta0    = NULL,     # Theta prior
+                     cor_theta = NULL,     # ...
+                     ru_theta  = 0.1,      # ...
                      lambda_rate = 0.1,    # Scale of ctrl points prior
-                     lasso     = FALSE,
-                     model     = modExpGP,
+                     lasso     = FALSE,    # Use lasso prior ?
+                     model     = modExpGP, # Model
                      method    = 'sample', # One of 'sample','optim','vb'
                                            # Rq: 'vb' always fails !!!
                      iter      = 50000,    # Max. iterations of optimizer
@@ -180,7 +182,7 @@ fitExpGP <- function(x, y, uy, tag,
                      nb_warmup = 500,
                      nb_iter   = 1000) {
 
-  # Adjust tag to options
+  # Build tag from options
   tag1 =''
   if(prior_PD != 0)
     tag1=paste0(tag1,'_priPD')
@@ -359,7 +361,7 @@ plotPriPos <- function(pri,pos,tag,xlim=range(c(pri,pos))) {
 }
 
 # RUN ####
-dataDirs = c("DataWl","Data1","DataSynth")[1]
+dataDirs = c("DataWl","Data1","DataSynth")[2]
 for (dataDir in dataDirs) {
 
   dataSets = list.dirs(path=dataDir,full.names = FALSE)[-1]

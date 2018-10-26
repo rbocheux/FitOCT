@@ -54,8 +54,8 @@ if(method == 'sample' || method == 'vb') {
 
   if(prior_PD == 0) {
     # Residuals
-    ylim=1.2*max(abs(resid))*c(-1,1)
     res = colMeans(resid)
+    ylim=1.2*max(abs(res))*c(-1,1)
     plot(x,res,type='n',
          ylim=ylim, main='Residuals',
          xlab='depth (a.u.)',
