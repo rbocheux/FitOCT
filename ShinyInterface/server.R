@@ -10,7 +10,7 @@ for (lib in libs ) {
 # Options ####
 Sys.setlocale(category = "LC_NUMERIC", locale="C")
 options(mc.cores = parallel::detectCores(),
-        width = 20,
+        width = 60,
         warn  = 0)
 rstan_options(auto_write = TRUE)
 # set.seed(1234) # Initialise la graine du RNG
@@ -34,6 +34,7 @@ cex = 1
 Inputs = reactiveValues(
   x          = NULL,
   y          = NULL,
+  xSel       = NULL,
   outSmooth  = NULL,
   outMonoExp = NULL,
   outExpGP   = NULL
@@ -58,16 +59,30 @@ function(input, output, session) {
       Inputs$outSmooth  <<- NULL
       Inputs$outMonoExp <<- NULL
       Inputs$outExpGP   <<- NULL
+
+      # Update depts range selector
+      rangeX = range(Inputs$x)
+      updateSliderInput(
+        session,
+        inputId = 'depthSel',
+        min     = rangeX[1],
+        max     = rangeX[2],
+        value   = rangeX,
+        step    = signif(diff(rangeX)/100, 3)
+      )
+      Inputs$xSel = 1:length(Inputs$x)
     }
   )
 
   output$plotNoise   <- renderPlot({
-
     if(is.null(Inputs$x))
       return(NULL)
 
-    x = Inputs$x
-    y = Inputs$y
+    xSel = which(Inputs$x >= input$depthSel[1] &
+                   Inputs$x <= input$depthSel[2]  )
+
+    x = Inputs$x[xSel]
+    y = Inputs$y[xSel]
 
     out = FitOCTLib::estimateNoise(x=x,y=y,df=input$smooth_df)
 
@@ -121,8 +136,12 @@ function(input, output, session) {
     if(is.null(Inputs$outSmooth))
       return(NULL)
 
-    x = Inputs$x
-    y = Inputs$y
+    xSel = which(Inputs$x >= input$depthSel[1] &
+                     Inputs$x <= input$depthSel[2]  )
+
+    x = Inputs$x[xSel]
+    y = Inputs$y[xSel]
+
 
     out = Inputs$outSmooth
     ySmooth = out$ySmooth
@@ -211,8 +230,15 @@ function(input, output, session) {
     fit   = outm$fit
     theta = fit$par$theta
 
-    out = FitOCTLib::fitExpGP(x      = Inputs$x,
-                              y      = Inputs$y,
+    isolate({
+      xSel = which(Inputs$x >= input$depthSel[1] &
+                     Inputs$x <= input$depthSel[2]  )
+      x = Inputs$x[xSel]
+      y = Inputs$y[xSel]
+    })
+
+    out = FitOCTLib::fitExpGP(x      = x,
+                              y      = y,
                               uy     = Inputs$outSmooth[['uy']],
                               method = input$method,
                               theta0 = theta,
@@ -237,8 +263,10 @@ function(input, output, session) {
     if(is.null(Inputs$outExpGP))
       return(NULL)
 
-    x = Inputs$x
-    y = Inputs$y
+    xSel = which(Inputs$x >= input$depthSel[1] &
+                   Inputs$x <= input$depthSel[2]  )
+    x = Inputs$x[xSel]
+    y = Inputs$y[xSel]
 
     outS = Inputs$outSmooth
     ySmooth = outS$ySmooth

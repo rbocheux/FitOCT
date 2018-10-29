@@ -26,6 +26,14 @@ navbarPage("FitOCT",
                                     max     = 30,
                                     value   = 15),
                         hr( style="border-color: #666;"),
+                        sliderInput("depthSel",
+                                    "Select depth range",
+                                    min = 0,
+                                    max = 1,
+                                    value = c(0,1),
+                                    sep=""
+                        ),
+                        hr( style="border-color: #666;"),
                         verbatimTextOutput("resMonoExp")
                       ),
                       mainPanel(
