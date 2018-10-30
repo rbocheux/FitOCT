@@ -241,8 +241,7 @@ function(input, output, session) {
                               y      = y,
                               uy     = Inputs$outSmooth[['uy']],
                               method = input$method,
-                              theta0 = theta,
-                              nb_warmup = 100, nb_iter = 200)
+                              theta0 = theta)
 
     return(out)
   }
