@@ -53,15 +53,8 @@ function(input, output, session) {
       if(class(dat) == 'try-error')
         return(NULL)
 
-      # Store data and empty buffers
-      Inputs$x          <<- dat[,1]
-      Inputs$y          <<- dat[,2]
-      Inputs$outSmooth  <<- NULL
-      Inputs$outMonoExp <<- NULL
-      Inputs$outExpGP   <<- NULL
-
       # Update depts range selector
-      rangeX = range(Inputs$x)
+      rangeX = range(dat[,1])
       updateSliderInput(
         session,
         inputId = 'depthSel',
@@ -70,7 +63,14 @@ function(input, output, session) {
         value   = rangeX,
         step    = signif(diff(rangeX)/100, 3)
       )
-      Inputs$xSel = 1:length(Inputs$x)
+
+      # Store data and empty buffers
+      Inputs$x          <<- dat[,1]
+      Inputs$y          <<- dat[,2]
+      Inputs$outSmooth  <<- NULL
+      Inputs$outMonoExp <<- NULL
+      Inputs$outExpGP   <<- NULL
+      Inputs$xSel       <<- 1:length(Inputs$x)
     }
   )
 
@@ -79,10 +79,12 @@ function(input, output, session) {
       return(NULL)
 
     xSel = which(Inputs$x >= input$depthSel[1] &
-                   Inputs$x <= input$depthSel[2]  )
-
+                 Inputs$x <= input$depthSel[2]  )
     x = Inputs$x[xSel]
     y = Inputs$y[xSel]
+
+    if(!is.finite(IQR(x)))
+      return(NULL) # Protect smooth.spline from zero tol
 
     out = FitOCTLib::estimateNoise(x=x,y=y,df=input$smooth_df)
 
@@ -200,10 +202,20 @@ function(input, output, session) {
     if (is.null(Inputs$outMonoExp))
       return(NULL)
 
-    out = Inputs$outMonoExp
-    fit = out$fit
+    out  = Inputs$outSmooth
+    a    = out$theta
 
-    if(out$method == 'optim') {
+    outm = Inputs$outMonoExp
+    fit  = outm$fit
+
+    if(outm$method == 'optim') {
+      for(i in 1:length(a))
+        cat(paste0('a_',i,' : '),signif(a[i],3),'\n')
+
+      opt = unlist(fit$par[['theta']],use.names = TRUE)
+      for(i in 1:length(opt))
+        cat(paste0('b_',i,' : '),signif(opt[i],3),'\n')
+
       br = fit$par$br
     } else {
       br = mean(extract(fit,pars='br')[[1]])
@@ -216,7 +228,7 @@ function(input, output, session) {
     CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
 
     if(prod(CI95-br) >= 0)
-      cat('!!! WARNING !!! \n')
+      cat('\n!!! WARNING !!! \n')
     cat('br       :',signif(br,2),'\n')
     cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'))
 
@@ -227,21 +239,25 @@ function(input, output, session) {
       return(NULL)
 
     outm  = Inputs$outMonoExp
-    fit   = outm$fit
-    theta = fit$par$theta
 
     isolate({
       xSel = which(Inputs$x >= input$depthSel[1] &
-                     Inputs$x <= input$depthSel[2]  )
+                   Inputs$x <= input$depthSel[2]  )
       x = Inputs$x[xSel]
       y = Inputs$y[xSel]
     })
 
-    out = FitOCTLib::fitExpGP(x      = x,
-                              y      = y,
-                              uy     = Inputs$outSmooth[['uy']],
-                              method = input$method,
-                              theta0 = theta)
+    out = FitOCTLib::fitExpGP(x         = x,
+                              y         = y,
+                              uy        = Inputs$outSmooth[['uy']],
+                              method    = input$method,
+                              theta0    = outm$best.theta,
+                              cor_theta = outm$cor.theta,
+                              ru_theta  = input$ru_theta,
+                              nb_warmup = input$nb_warmup,
+                              nb_iter   = input$nb_warmup + input$nb_sample,
+                              Nn        = input$Nn
+                              )
 
     return(out)
   }
@@ -263,7 +279,7 @@ function(input, output, session) {
       return(NULL)
 
     xSel = which(Inputs$x >= input$depthSel[1] &
-                   Inputs$x <= input$depthSel[2]  )
+                 Inputs$x <= input$depthSel[2]  )
     x = Inputs$x[xSel]
     y = Inputs$y[xSel]
 
@@ -331,9 +347,9 @@ function(input, output, session) {
         grid(lwd=3); abline(h=0)
         polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
         points(x,res,pch=20,cex=0.75,col=cols[6])
-        lines(x, y_map - ySmooth, col=cols[7])
+        lines(x, ySmooth-y_map, col=cols[7])
         legend('topright', bty='n',
-               legend=c('mean resid.','data 95% uncert.','best.fit - smooth'),
+               legend=c('mean resid.','data 95% uncert.','smooth - fit'),
                pch=c(20,NA,NA),lty=c(-1,1,1),lwd=c(1,6,1),
                col=c(cols[6],col_tr2[4],cols[7])
         )
@@ -414,9 +430,9 @@ function(input, output, session) {
       abline(h=0)
       polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
       points(x,res,pch=20,cex=0.75,col=cols[6])
-      lines(x, mod - ySmooth, col=cols[7])
+      lines(x, ySmooth - mod, col=cols[7])
       legend('topright', bty='n',
-             legend=c('mean resid.','data 95% uncert.','best.fit - smooth'),
+             legend=c('mean resid.','data 95% uncert.','smooth - fit'),
              pch=c(20,NA,NA),lty=c(-1,1,1),lwd=c(1,6,1),
              col=c(cols[6],col_tr2[4],cols[7])
       )
@@ -578,8 +594,6 @@ function(input, output, session) {
 
 
   })
-
-
 
   output$tracesExpGP <- renderPlot({
     if (is.null(out <- doExpGP()))
