@@ -1,6 +1,7 @@
 # Libraries ####
 libs =c('shiny','parallel','rstan','FitOCTLib',
-        'inlmisc','shinycssloaders','DT')
+        'inlmisc','shinycssloaders','DT',
+        'RandomFields')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -12,7 +13,9 @@ Sys.setlocale(category = "LC_NUMERIC", locale="C")
 options(mc.cores = parallel::detectCores(),
         width = 60,
         warn  = 0)
-rstan_options(auto_write = TRUE)
+rstan::rstan_options(auto_write = TRUE)
+RandomFields::RFoptions(spConform=FALSE)
+
 # set.seed(1234) # Initialise la graine du RNG
 
 # Color schemes ####
@@ -37,7 +40,8 @@ Inputs = reactiveValues(
   xSel       = NULL,
   outSmooth  = NULL,
   outMonoExp = NULL,
-  outExpGP   = NULL
+  outExpGP   = NULL,
+  fitOut     = NULL
 )
 
 # MAIN ####
@@ -58,10 +62,10 @@ function(input, output, session) {
       updateSliderInput(
         session,
         inputId = 'depthSel',
-        min     = rangeX[1],
-        max     = rangeX[2],
-        value   = rangeX,
-        step    = signif(diff(rangeX)/100, 3)
+        min     = round(rangeX[1]),
+        max     = round(rangeX[2]),
+        value   = round(rangeX),
+        step    = 1
       )
 
       # Store data and empty buffers
@@ -70,23 +74,39 @@ function(input, output, session) {
       Inputs$outSmooth  <<- NULL
       Inputs$outMonoExp <<- NULL
       Inputs$outExpGP   <<- NULL
+      Inputs$fitOut     <<- NULL
       Inputs$xSel       <<- 1:length(Inputs$x)
     }
   )
+
+  selX <- function(x,y) {
+
+    xSel = which(x >= input$depthSel[1] &
+                 x <= input$depthSel[2]  )
+    x = x[xSel]; y = y[xSel]
+
+    if(input$subSample != 1) {
+      xSel = seq(1,length(x),by=input$subSample)
+      x = x[xSel]; y = y[xSel]
+    }
+    return(list(x=x,y=y))
+  }
 
   output$plotNoise   <- renderPlot({
     if(is.null(Inputs$x))
       return(NULL)
 
-    xSel = which(Inputs$x >= input$depthSel[1] &
-                 Inputs$x <= input$depthSel[2]  )
-    x = Inputs$x[xSel]
-    y = Inputs$y[xSel]
+    C = selX(x = Inputs$x, y = Inputs$y)
+    x = C$x; y = C$y
 
     if(!is.finite(IQR(x)))
       return(NULL) # Protect smooth.spline from zero tol
 
-    out = FitOCTLib::estimateNoise(x=x,y=y,df=input$smooth_df)
+    out = FitOCTLib::estimateNoise(
+      x  = x,
+      y  = y,
+      df = input$smooth_df
+      )
 
     Inputs$outSmooth  <<- out
     Inputs$outMonoExp <<- NULL
@@ -138,18 +158,18 @@ function(input, output, session) {
     if(is.null(Inputs$outSmooth))
       return(NULL)
 
-    xSel = which(Inputs$x >= input$depthSel[1] &
-                     Inputs$x <= input$depthSel[2]  )
+    C = selX(x = Inputs$x, y = Inputs$y)
+    x = C$x; y = C$y
 
-    x = Inputs$x[xSel]
-    y = Inputs$y[xSel]
-
-
-    out = Inputs$outSmooth
+    out     = Inputs$outSmooth
     ySmooth = out$ySmooth
     uy      = out$uy
 
-    out = FitOCTLib::fitMonoExp(x=x,y=y,uy=uy)
+    out = FitOCTLib::fitMonoExp(
+      x  = x,
+      y  = y,
+      uy = uy
+    )
 
     Inputs$outMonoExp <<- out
     Inputs$outExpGP   <<- NULL
@@ -161,7 +181,7 @@ function(input, output, session) {
 
     par(mfrow=c(1,2),pty=pty,mar=mar,mgp=mgp,tcl=tcl,lwd=lwd, cex=cex)
 
-    # Smooth Fit
+    # Fit
     plot(x,y,pch=20,cex=0.5,col=cols[6],
          main='Data fit',
          xlab='depth (a.u.)',
@@ -241,23 +261,28 @@ function(input, output, session) {
     outm  = Inputs$outMonoExp
 
     isolate({
-      xSel = which(Inputs$x >= input$depthSel[1] &
-                   Inputs$x <= input$depthSel[2]  )
-      x = Inputs$x[xSel]
-      y = Inputs$y[xSel]
+      C = selX(x = Inputs$x, y = Inputs$y)
+      x = C$x; y = C$y
     })
 
-    out = FitOCTLib::fitExpGP(x         = x,
-                              y         = y,
-                              uy        = Inputs$outSmooth[['uy']],
-                              method    = input$method,
-                              theta0    = outm$best.theta,
-                              cor_theta = outm$cor.theta,
-                              ru_theta  = input$ru_theta,
-                              nb_warmup = input$nb_warmup,
-                              nb_iter   = input$nb_warmup + input$nb_sample,
-                              Nn        = input$Nn
-                              )
+    Inputs$fitOut <<- NULL
+
+    Inputs$fitOut <<- capture.output(
+      out <- FitOCTLib::fitExpGP(
+        x         = x,
+        y         = y,
+        uy        = Inputs$outSmooth[['uy']],
+        method    = input$method,
+        theta0    = outm$best.theta,
+        cor_theta = outm$cor.theta,
+        ru_theta  = input$ru_theta,
+        nb_warmup = input$nb_warmup,
+        nb_iter   = input$nb_warmup + input$nb_sample,
+        Nn        = input$Nn,
+        gridType  = input$gridType,
+        open_progress = FALSE
+      )
+    )
 
     return(out)
   }
@@ -271,6 +296,12 @@ function(input, output, session) {
     }
   )
 
+  output$outExpGP <- renderPrint({
+    cat('### Bayesian Inference ###\n')
+    gsub('\t',' ',Inputs$fitOut)
+  })
+  outputOptions(output, "outExpGP",suspendWhenHidden = FALSE)
+
   output$plotExpGP   <- renderPlot({
     if (is.null(out <- doExpGP()))
       return(NULL)
@@ -278,12 +309,10 @@ function(input, output, session) {
     if(is.null(Inputs$outExpGP))
       return(NULL)
 
-    xSel = which(Inputs$x >= input$depthSel[1] &
-                 Inputs$x <= input$depthSel[2]  )
-    x = Inputs$x[xSel]
-    y = Inputs$y[xSel]
+    C = selX(x = Inputs$x, y = Inputs$y)
+    x = C$x; y = C$y
 
-    outS = Inputs$outSmooth
+    outS    = Inputs$outSmooth
     ySmooth = outS$ySmooth
     uy      = outS$uy
 
@@ -292,6 +321,8 @@ function(input, output, session) {
     xGP      = out$xGP
     prior_PD = out$prior_PD
     lasso    = out$lasso
+
+    modScale = input$modRange
 
     nMC = 100
 
@@ -359,7 +390,7 @@ function(input, output, session) {
       # Local deviations
       if(prior_PD == 0) {
         plot(x, dL[map,], type = 'n',
-             ylim = 0.5 * c(-1,1),
+             ylim = modScale * c(-1,1),
              col  = cols[4],
              main='Deviation from mean depth',
              xlab = 'depth (a.u.)',
@@ -372,7 +403,7 @@ function(input, output, session) {
 
       } else {
         plot(x, x, type = 'n',
-             ylim = 0.5*c(-1,1),
+             ylim = modScale*c(-1,1),
              col  = cols[4],
              main='Deviation from mean depth',
              xlab = 'depth (a.u.)',
@@ -440,7 +471,7 @@ function(input, output, session) {
 
       # Local deviations
       plot(x, dL, type = 'l',
-           ylim = 0.5*c(-1,1),
+           ylim = modScale*c(-1,1),
            col  = cols[4],
            main='Deviation from mean depth',
            xlab = 'depth (a.u.)',
@@ -611,7 +642,71 @@ function(input, output, session) {
 
   })
 
+  output$plotGP      <- renderPlot({
+    # Simulate GP for random modulation curve
+    set.seed(12345)
 
+    # Nb control points
+    n = input$NnTest
+
+    # Reference model
+    a = 0.05
+    fmod = function (x,a)
+      a*sin(x/a)/x
+
+    # Grid
+    dx  = 1/(n+1)
+    if(input$gridTypeTest == 'internal')
+      xdat = seq(dx/2,1-dx/2,length.out = n)
+    else
+      xdat = seq(0.0000001,1.00,length.out = n)
+
+    # Control values
+    ydat = fmod(xdat,a)
+
+    # Output values and reference
+    np <- 100
+    xp <- seq(0,1,length.out = np)
+    yref = fmod(xp,a)
+
+    # Simulated GP
+    nRun=100
+
+    rho = input$rho_scaleTest
+    if(rho == 0)
+      rho = 1/n
+
+    cond = RandomFields::RFsimulate(
+      model = RMgauss(var=input$alpha_scaleTest*sd(ydat),
+                      scale=rho),
+      x=xp,
+      given = list(x=xdat),
+      data  = list(y=ydat),
+      n=nRun,
+    )
+
+    par(mfrow=c(1,1),pty=pty,mar=mar,mgp=mgp,
+        tcl=tcl,lwd=1.5*lwd, cex=1.5*cex)
+    plot(xdat,ydat,pch=20,col=cols[7],
+         xlim = c(0,1),
+         ylim = 1.2*c(-1,1),
+         xlab = 'depth (a.u.)',
+         ylab = 'relative deviation')
+    grid()
+    lines(xp,yref,col=1,lty=2)
+    matlines(xp,cond,col=col_tr[4])
+    lines(xp,rowMeans(cond),col=cols[6])
+    legend('topright',
+           legend = c('ctrl. points','GP pred.',
+                      'mean GP pred.','true curve'),
+           col = c(cols[7],col_tr2[4],cols[6],1),
+           pch = c(20,NA,NA,NA),
+           lty = c(NA,1,1,2),
+           bty='n'
+           )
+    box()
+
+  })
 }
 
 
