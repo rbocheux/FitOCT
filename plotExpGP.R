@@ -37,7 +37,15 @@ if(method == 'sample' || method == 'vb') {
     if(nMC >0)
       for (i in 1:nMC)
         lines(x, mod[iMC[i],], col=col_tr[4])
-    lines(x,theta[map,1]+theta[map,2]*exp(-x/theta[map,3]),col=cols[7])
+    # lines(x,theta[map,1]+theta[map,2]*exp(-x/theta[map,3]),col=cols[7])
+
+    # Calculate AVerage Exponential Decay
+    mExp = x*0
+    for (i in 1:nrow(theta))
+      mExp = mExp + theta[i,1]+theta[i,2]*exp(-x/theta[i,3])
+    mExp = mExp/nrow(theta)
+    lines(x,mExp,col=cols[8])
+
   } else {
     if(nMC >0)
       for (i in 1:nMC)
@@ -46,7 +54,7 @@ if(method == 'sample' || method == 'vb') {
 
   legend('topright', bty='n',
          title = '(a) ', title.adj = 1,
-         legend=c('data','expo. best fit','post. sample'),
+         legend=c('data','mean exp. fit','post. sample'),
          pch=c(20,NA,NA),lty=c(-1,1,1),
          col=c(cols[6],cols[7], col_tr2[4])
   )
