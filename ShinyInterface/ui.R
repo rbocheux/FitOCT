@@ -158,6 +158,30 @@ navbarPage(
                   inline = FALSE
                 )
               )
+            ),
+            fluidRow(
+              column(
+                width = 6,
+                sliderInput(
+                  'rho_scale',
+                  label='rho',
+                  value = 0.0,
+                  min   = 0.0,
+                  max   = 1.0,
+                  step  = 0.01
+                )
+              ),
+              column(
+                width = 6,
+                sliderInput(
+                  'lambda_rate',
+                  label='lambda_rate',
+                  value = 0.1,
+                  min   = 0.0,
+                  max   = 0.5,
+                  step  = 0.01
+                )
+              )
             )
           ),
           tabPanel(
@@ -219,6 +243,16 @@ navbarPage(
               withSpinner(
                 plotOutput(
                   'tracesExpGP',
+                  height = '600px'
+                ),
+                type = 4
+              )
+            ),
+            tabPanel(
+              title = 'Pri/Post',
+              withSpinner(
+                plotOutput(
+                  'priPostExpGP',
                   height = '600px'
                 ),
                 type = 4

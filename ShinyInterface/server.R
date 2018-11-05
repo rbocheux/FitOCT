@@ -1,7 +1,7 @@
 # Libraries ####
 libs =c('shiny','parallel','rstan','FitOCTLib',
         'inlmisc','shinycssloaders','DT',
-        'RandomFields')
+        'RandomFields','stringr')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -25,13 +25,28 @@ col_tr  = inlmisc::GetTolColors(8,alpha=0.1)
 # Darker for legends or fillings
 col_tr2 = inlmisc::GetTolColors(8,alpha=0.4)
 
-# Graphical parameters ####
+# Graphical parameters and functions ####
 pty = 's'
 mar = c(3,3,1.5,.5)
 mgp = c(2,.75,0)
 tcl = -0.5
 lwd = 2
 cex = 1
+
+plotPriPos <- function(pri,pos,tag,xlim=range(c(pri,pos))) {
+  # Plot overlapped densities for 2 samples
+  d = density(pri)
+  d$y = d$y/max(d$y)
+  plot(d, type = 'l', col = cols[4],
+       main = tag,
+       xlab = '', xlim = xlim,
+       ylab = 'Norm. density', ylim = c(0,1.1), yaxs = 'i')
+  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[4],border=NA)
+  d = density(pos)
+  d$y = d$y/max(d$y)
+  lines(d$x,d$y,col=cols[6])
+  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[6],border=NA)
+}
 
 # Global variables ####
 Inputs = reactiveValues(
@@ -46,6 +61,11 @@ Inputs = reactiveValues(
 
 # MAIN ####
 function(input, output, session) {
+
+  # Directory to store stan logs
+  session_dir = file.path(tempdir(),stringr::str_sub(session$token, 1, 8))
+  dir.create(session_dir, showWarnings = FALSE)
+  session$onSessionEnded(function() {unlink(session_dir, TRUE)})
 
   observeEvent(
     input$dataFile,
@@ -80,6 +100,7 @@ function(input, output, session) {
   )
 
   selX <- function(x,y) {
+    # Apply selectors to inputs
 
     xSel = which(x >= input$depthSel[1] &
                  x <= input$depthSel[2]  )
@@ -265,24 +286,28 @@ function(input, output, session) {
       x = C$x; y = C$y
     })
 
-    Inputs$fitOut <<- NULL
-
-    Inputs$fitOut <<- capture.output(
-      out <- FitOCTLib::fitExpGP(
-        x         = x,
-        y         = y,
-        uy        = Inputs$outSmooth[['uy']],
-        method    = input$method,
-        theta0    = outm$best.theta,
-        cor_theta = outm$cor.theta,
-        ru_theta  = input$ru_theta,
-        nb_warmup = input$nb_warmup,
-        nb_iter   = input$nb_warmup + input$nb_sample,
-        Nn        = input$Nn,
-        gridType  = input$gridType,
-        open_progress = FALSE
-      )
+    log_file = file.path(session_dir, "stan.log")
+    dummy = suppressWarnings(unlink(log_file))
+    sink(log_file)
+    out <- FitOCTLib::fitExpGP(
+      x         = x,
+      y         = y,
+      uy        = Inputs$outSmooth[['uy']],
+      method    = input$method,
+      theta0    = outm$best.theta,
+      cor_theta = outm$cor.theta,
+      ru_theta  = input$ru_theta,
+      nb_warmup = input$nb_warmup,
+      nb_iter   = input$nb_warmup + input$nb_sample,
+      Nn        = input$Nn,
+      rho_scale = ifelse(input$rho_scale==0,
+                         1. / input$Nn,
+                         input$rho_scale),
+      lambda_rate = input$lambda_rate,
+      gridType  = input$gridType,
+      open_progress = FALSE
     )
+    sink()
 
     return(out)
   }
@@ -296,11 +321,35 @@ function(input, output, session) {
     }
   )
 
+  do_progress = function(file) {
+    if (!file.exists(file))
+      return(NULL)
+    r = readLines(file, warn = FALSE)
+    if (length(r) == 0)
+      return(NULL)
+    r = unlist(stringr::str_extract_all(r, "Chain \\d+.*"))
+    r = r[length(r)]
+    frac_s = stringr::str_match(r, "(\\d+)%")
+    if (nrow(frac_s) == 0) return(NULL)
+    frac = as.numeric(frac_s[1,2])
+    chain = as.integer(stringr::str_match(r, "Chain (\\d+)")[1,2])
+    complete = floor(((chain - 1)*100 + frac)/4)
+    print(complete)
+    return(complete)
+  }
+
+  file_info = reactiveFileReader(
+    intervalMillis = 1000,
+    session       = session,
+    filePath      = file.path(session_dir, "stan.log"),
+    readFunc      = readLines
+  )
+
   output$outExpGP <- renderPrint({
-    cat('### Bayesian Inference ###\n')
-    gsub('\t',' ',Inputs$fitOut)
+    file_info()
+    #cat(file_info(),'%')
   })
-  outputOptions(output, "outExpGP",suspendWhenHidden = FALSE)
+  #outputOptions(output, "outExpGP",suspendWhenHidden = FALSE)
 
   output$plotExpGP   <- renderPlot({
     if (is.null(out <- doExpGP()))
@@ -336,9 +385,9 @@ function(input, output, session) {
         resid   = extract(fit,'resid')[[1]]
         mod     = extract(fit,'m')[[1]]
         dL      = extract(fit,'dL')[[1]]
-        lp       = extract(fit,'lp__')[[1]]
-        map = which.max(lp)
-        y_map = mod[map,]
+        lp      = extract(fit,'lp__')[[1]]
+        map     = which.max(lp)
+        y_map   = mod[map,]
       }
 
       iMC = sample.int(nrow(theta),nMC)
@@ -350,10 +399,16 @@ function(input, output, session) {
            ylab='mean OCT signal (a.u.)')
       grid()
       if(prior_PD == 0) {
-        if(nMC >0)
+        if(nMC >0) {
           for (i in 1:nMC)
             lines(x, mod[iMC[i],], col=col_tr[4])
-        lines(x,theta[map,1]+theta[map,2]*exp(-x/theta[map,3]),col=cols[7])
+        }
+        # Calculate AVerage Exponential Decay
+        mExp = x*0
+        for (i in 1:nrow(theta))
+           mExp = mExp + theta[i,1]+theta[i,2]*exp(-x/theta[i,3])
+        mExp = mExp/nrow(theta)
+        lines(x,mExp,col=cols[7])
       } else {
         if(nMC >0)
           for (i in 1:nMC)
@@ -361,7 +416,7 @@ function(input, output, session) {
       }
 
       legend('topright', bty='n',
-             legend=c('data','expo. best fit','post. sample'),
+             legend=c('data','mean exp. fit','post. sample'),
              pch=c(20,NA,NA),lty=c(-1,1,1),
              col=c(cols[6],cols[7], col_tr2[4])
       )
@@ -641,6 +696,64 @@ function(input, output, session) {
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = pars))
 
   })
+
+  output$priPostExpGP   <- renderPlot({
+    if (is.null(fitGP <- doExpGP()))
+      return(NULL)
+    if(fitGP$method != 'sample')
+      return(NULL)
+
+    isolate({
+      C = selX(x = Inputs$x, y = Inputs$y)
+      x = C$x; y = C$y
+
+      fitGP_pri <- FitOCTLib::fitExpGP(
+        x         = x,
+        y         = y,
+        uy        = Inputs$outSmooth[['uy']],
+        theta0    = Inputs$outMonoExp[['best.theta']],
+        cor_theta = Inputs$outMonoExp[['cor.theta']],
+        method    = input$method,
+        ru_theta  = input$ru_theta,
+        prior_PD  = 1,
+        rho_scale = ifelse(input$rho_scale==0,
+                           1. / input$Nn,
+                           input$rho_scale),
+        lambda_rate = input$lambda_rate,
+        nb_warmup = input$nb_warmup,
+        nb_iter   = input$nb_warmup + input$nb_sample,
+        Nn        = input$Nn,
+        gridType  = input$gridType,
+        open_progress = FALSE
+      )
+    })
+
+    theta_pri   = rstan::extract(fitGP_pri$fit,'theta')[[1]]
+    yGP_pri     = rstan::extract(fitGP_pri$fit,'yGP')[[1]]
+    lambda_pri  = rstan::extract(fitGP_pri$fit,'lambda')[[1]]
+    sigma_pri   = rstan::extract(fitGP_pri$fit,'sigma')[[1]]
+
+    theta_pos   = rstan::extract(fitGP$fit,'theta')[[1]]
+    yGP_pos     = rstan::extract(fitGP$fit,'yGP')[[1]]
+    lambda_pos  = rstan::extract(fitGP$fit,'lambda')[[1]]
+    sigma_pos   = rstan::extract(fitGP$fit,'sigma')[[1]]
+
+    nPar = ncol(theta_pri) + ncol(yGP_pri) + 2
+    ncol = 4
+    nrow = floor(nPar / ncol)
+    if(ncol*nrow < nPar) nrow = nrow + 1
+    par(mfrow=c(nrow,ncol),pty=pty,mar=mar,
+        mgp=mgp,tcl=tcl,lwd=lwd, cex=cex)
+
+    for(i in 1:ncol(theta_pri))
+      plotPriPos(theta_pri[,i],theta_pos[,i],paste0('theta_',i))
+    plotPriPos(lambda_pri,lambda_pos,'lambda')
+    plotPriPos(sigma_pri,sigma_pos,'sigma')
+    for(i in 1:ncol(yGP_pri))
+      plotPriPos(yGP_pri[,i],yGP_pos[,i],paste0('yGP_',i),0.5*c(-1,1))
+
+  })
+
 
   output$plotGP      <- renderPlot({
     # Simulate GP for random modulation curve
