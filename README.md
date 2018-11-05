@@ -7,8 +7,13 @@ Fit of OCT decays using R/stan
 
 ## Batch version
 
-`GP2.R` enables to treat batches of OCT files.
+`FitOCT.R` enables to treat batches of OCT files.
+
+Companion scripts: `plotMonoExp.R`, `plotExpGP.R` and `priPost.R`.
+
+(`GP2.R` is deprecated in releases above 0.2).
+
 
 ## Graphical version
 
-A Shiny interface for individual files can be found [here](./ShinyInterface).
+A Shiny interface to treat individual files can be found [here](./ShinyInterface).
