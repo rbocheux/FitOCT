@@ -1,10 +1,34 @@
+# Ctrl output
+sink(file=paste0('Results/',tag,'_ctrl.txt'))
+cat('\n Noise fit parameters:\n')
+a = fits$theta
+for(i in 1:length(a))
+  cat(paste0('a_',i,' : '),signif(a[i],3),'\n')
+cat('\n\n')
+
+opt = theta0
+cat('\n MonoExp decay parameters:\n')
+for(i in 1:length(opt))
+  cat(paste0('b_',i,' : '),signif(opt[i],3),'\n')
+br = fitm$fit$par$br
+N  = length(x)
+Np = 3
+ndf = N - Np
+CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
+if(prod(CI95-br) >= 0)
+  cat('\n!!! WARNING !!! \n')
+cat('br       :',signif(br,2),'\n')
+cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'))
+cat('\n\n')
+sink()
+
 # Plots
 fit    = fitm$fit
 
 theta   = fit$par$theta
 resid   = fit$par$resid
 mod     = fit$par$m
-tagOut  = fitm$tag
+tagOut  = paste0('Results/',tag,'_MonoExp')
 
 png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000)
