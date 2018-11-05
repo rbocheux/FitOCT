@@ -245,7 +245,8 @@ fitExpGP <- function(x, y, uy, tag,
                    init = function() {init},
                    control = list(adapt_delta=0.99,max_treedepth=12),
                    iter = nb_iter, chains = nb_chains,
-                   warmup = nb_warmup, verbose=FALSE)
+                   warmup = nb_warmup, verbose=TRUE,
+                   open_progress = FALSE)
 
     sink(file = paste0(tagOut,'_ctrl.txt'))
     pars   = parOpt
@@ -366,7 +367,7 @@ for (dataDir in dataDirs) {
 
   dataSets = list.dirs(path=dataDir,full.names = FALSE)[-1]
 
-  for(dataSet in dataSets) {
+  for(dataSet in dataSets[4]) {
 
     tag = paste0(dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')
@@ -374,8 +375,8 @@ for (dataDir in dataDirs) {
     # Get Data
     D = read.csv(paste0(dataDir,'/',dataSet,'/Courbe.csv'))
     x=D[,1]; y=D[,2]
-    sel = x > 20 & x<=500 # Exclude aberrant points
-    x = x[sel]; y = y[sel]
+    # sel = x > 20 & x<=500 # Exclude aberrant points
+    # x = x[sel]; y = y[sel]
 
     # Estimate data uncertainty
     fits = estimateNoise(x, y, tag)
@@ -410,13 +411,15 @@ for (dataDir in dataDirs) {
 
     # - Posterior Distribution
     fitGP = fitExpGP(x, y, uy, tag,
-                     method = c('sample','optim','vb')[2],
+                     method = c('sample','optim','vb')[1],
                      model = model,
                      theta0 = theta0,
                      cor_theta = cor.theta,
                      ru_theta = ru_theta,
                      lambda_rate=lambda_rate,
-                     lasso = lasso)
+                     lasso = lasso) #,
+                     # nb_warmup = 100, nb_iter = 200)
+
     fitOut = fitGP    ; source ("./plotExpGP.R")
 
     # - Compare prior/posterior marginal pdfs (if possible)
