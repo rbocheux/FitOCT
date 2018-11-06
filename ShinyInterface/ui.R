@@ -78,54 +78,57 @@ navbarPage(
     title = 'Modulation',
     sidebarLayout(
       sidebarPanel(
-        fluidRow(
-          column(
-            width = 7,
-            radioButtons(
-              inputId = 'method',
-              label   = 'Bayesian Inference',
-              choices = c(M.A.P. = 'optim',
-                          Sample = 'sample'),
-              selected = 'optim',
-              inline = FALSE
-            )
-          ),
-          column(
-            width = 3,
-            actionButton(
-              inputId = 'runExpGP',
-              strong("Run"),
-              icon=icon('gear')
-            ),
-            tags$style(type='text/css',
-                       "#runALS { width:100%; margin-top: 25px;}")
-          )
-        ),
-        conditionalPanel(
-          condition = "input.method == 'sample'",
+        h4('Bayesian Inference'),
+        wellPanel(
           fluidRow(
             column(
-              width = 5,
-              numericInput(
-                "nb_warmup",
-                label='nb_warmup',
-                value = 100,
-                min = 100,
-                max = 1000,
-                step = 100,
-                width = "100px"
+              width = 7,
+              radioButtons(
+                inputId = 'method',
+                label   = 'Method',
+                choices = c(M.A.P. = 'optim',
+                            Sample = 'sample'),
+                selected = 'optim',
+                inline = FALSE
               )
             ),
             column(
-              width = 5,
-              numericInput(
-                "nb_sample",
-                label='nb_sample',
-                value = 100,
-                min = 100,
-                max = 10000,
-                step = 100,
-                width = "100px"
+              width = 3,
+              actionButton(
+                inputId = 'runExpGP',
+                strong("Run"),
+                icon=icon('gear')
+              ),
+              tags$style(type='text/css',
+                         "#runExpGP { width:200%; margin-top: 0px;}")
+            )
+          ),
+          conditionalPanel(
+            condition = "input.method == 'sample'",
+            fluidRow(
+              column(
+                width = 5,
+                numericInput(
+                  "nb_warmup",
+                  label='nb_warmup',
+                  value = 100,
+                  min = 100,
+                  max = 1000,
+                  step = 100,
+                  width = "100px"
+                )
+              ),
+              column(
+                width = 5,
+                numericInput(
+                  "nb_sample",
+                  label='nb_sample',
+                  value = 100,
+                  min = 100,
+                  max = 10000,
+                  step = 100,
+                  width = "100px"
+                )
               )
             )
           )
@@ -134,140 +137,227 @@ navbarPage(
         h4('Controls'),
         tabsetPanel(
           tabPanel(
-            title = 'GP',
-            fluidRow(
-              column(
-                width = 6,
-                numericInput(
-                  "Nn",
-                  label='Nb. ctrl',
-                  value = 10,
-                  min = 5,
-                  max = 20,
-                  step = 1
+            title = 'Prior',
+            wellPanel(
+              fluidRow(
+                column(
+                  width = 6,
+                  numericInput(
+                    "ru_theta",
+                    label='ru_theta',
+                    value = 0.05,
+                    min = 0.01,
+                    max = 0.5,
+                    step = 0.01,
+                    width = "100px"
+                  )
+                ),
+                column(
+                  width = 6,
+                  actionButton(
+                    inputId = 'runPriExpGP',
+                    strong("Simul."),
+                    icon=icon('gear')
+                  ),
+                  tags$style(type='text/css',
+                             "#runPriExpGP { width:100%; margin-top: 25px;}"
+                  )
                 )
               ),
-              column(
-                width = 6,
-                radioButtons(
-                  inputId = 'gridType',
-                  label   = 'Grid Type',
-                  choices = c(Extremal = 'extremal',
-                              Internal = 'internal'),
-                  selected = 'internal',
-                  inline = FALSE
-                )
-              )
-            ),
-            fluidRow(
-              column(
-                width = 6,
-                sliderInput(
-                  'rho_scale',
-                  label='rho',
-                  value = 0.0,
-                  min   = 0.0,
-                  max   = 1.0,
-                  step  = 0.01
-                )
-              ),
-              column(
-                width = 6,
-                sliderInput(
-                  'lambda_rate',
-                  label='lambda_rate',
-                  value = 0.1,
-                  min   = 0.0,
-                  max   = 0.5,
-                  step  = 0.01
+              fluidRow(
+                column(
+                  width = 10,
+                  sliderInput(
+                    'lambda_rate',
+                    label='lambda_rate',
+                    value = 0.1,
+                    min   = 0.0,
+                    max   = 0.5,
+                    step  = 0.01
+                  )
                 )
               )
             )
           ),
           tabPanel(
-            title = 'Prior',
-            fluidRow(
-              column(
-                width = 10,
-                numericInput(
-                  "ru_theta",
-                  label='ru_theta',
-                  value = 0.05,
-                  min = 0.01,
-                  max = 0.5,
-                  step = 0.01,
-                  width = "100px"
+            title = 'GP',
+            wellPanel(
+              fluidRow(
+                column(
+                  width = 6,
+                  numericInput(
+                    "Nn",
+                    label='Nb. ctrl',
+                    value = 10,
+                    min = 5,
+                    max = 20,
+                    step = 1
+                  )
+                ),
+                column(
+                  width = 6,
+                  radioButtons(
+                    inputId = 'gridType',
+                    label   = 'Grid Type',
+                    choices = c(Extremal = 'extremal',
+                                Internal = 'internal'),
+                    selected = 'internal',
+                    inline = FALSE
+                  )
+                )
+              ),
+              fluidRow(
+                column(
+                  width = 10,
+                  sliderInput(
+                    'rho_scale',
+                    label='rho',
+                    value = 0.0,
+                    min   = 0.0,
+                    max   = 1.0,
+                    step  = 0.01
+                  )
+                ),
+                column(
+                  width = 6
+                )
+              )
+            )
+          ),
+          tabPanel(
+            title = 'Graphics',
+            wellPanel(
+              fluidRow(
+                column(
+                  width = 12,
+                  sliderInput(
+                    "modRange",
+                    "Scale Modulation range",
+                    min   = 0.1,
+                    max   = 5,
+                    value = 0.3,
+                    step  = 0.1
+                  )
                 )
               )
             )
           )
         ),
         hr( style="border-color: #666;"),
-        h4("Graphics"),
-        sliderInput(
-          "modRange",
-          "Scale Modulation range",
-          min   = 0.1,
-          max   = 5,
-          value = 0.3,
-          step  = 0.1
-        ),
-        hr( style="border-color: #666;"),
-        h5("Fit results"),
+        h4("Fit results"),
         verbatimTextOutput(
           'resExpGP'
         )
       ),
       mainPanel(
-        wellPanel(
-          h4("Modulated exponential fit"),
-          tabsetPanel(
-            tabPanel(
-              title = 'Fit',
-              withSpinner(
-                plotOutput(
-                  'plotExpGP',
-                  height = '600px'
+        tabsetPanel(
+          tabPanel(
+            title = 'Prior',
+            wellPanel(
+              tabsetPanel(
+                tabPanel(
+                  title = 'Predictions',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'plotPriExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
+                  )
                 ),
-                type = 4
-              )
-            ),
-            tabPanel(
-              title = 'Statistics',
-              DT::dataTableOutput(
-                'summaryOut'
-              )
-            ),
-            tabPanel(
-              title = 'Traces',
-              withSpinner(
-                plotOutput(
-                  'tracesExpGP',
-                  height = '600px'
+                tabPanel(
+                  title = 'Statistics',
+                  wellPanel(
+                    DT::dataTableOutput(
+                      'summaryPriOut'
+                    )
+                  )
                 ),
-                type = 4
-              )
-            ),
-            tabPanel(
-              title = 'Pri/Post',
-              withSpinner(
-                plotOutput(
-                  'priPostExpGP',
-                  height = '600px'
-                ),
-                type = 4
-              )
-            ),
-            tabPanel(
-              title = 'Output',
-              withSpinner(
-                verbatimTextOutput(
-                  'outExpGP'
-                ),
-                type = 4
+                tabPanel(
+                  title = 'Traces',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'tracesPriExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
+                  )
+                )
               )
             )
-          )
+          ),
+          tabPanel(
+            title = 'Posterior',
+            wellPanel(
+              tabsetPanel(
+                tabPanel(
+                  title = 'Predictions',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'plotExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
+                  )
+                ),
+                tabPanel(
+                  title = 'Statistics',
+                  wellPanel(
+                    DT::dataTableOutput(
+                      'summaryOut'
+                    )
+                  )
+                ),
+                tabPanel(
+                  title = 'Traces',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'tracesExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
+                  )
+                ),
+                tabPanel(
+                  title = 'Output',
+                  withSpinner(
+                    verbatimTextOutput(
+                      'outExpGP'
+                    ),
+                    type = 4
+                  )
+                )
+              )
+            )
+          ),
+          tabPanel(
+            title = 'Identification',
+            wellPanel(
+              tabsetPanel(
+                tabPanel(
+                  title = 'Pri/Post',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'priPostExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
+                  )
+                )
+              )
+            )
+          ),
+          type='pills'
         )
       )
     )
