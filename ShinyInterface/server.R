@@ -1,12 +1,17 @@
 # Libraries ####
-libs =c('shiny','parallel','rstan','FitOCTLib',
+libs =c('shiny','parallel','rstan','knitr',
         'inlmisc','shinycssloaders','DT',
-        'RandomFields','stringr')
+        'RandomFields','stringr','devtools')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE))
     install.packages(lib,dependencies=TRUE)
   library(lib,character.only = TRUE)
 }
+
+lib ='FitOCTLib'
+if(!require(lib,character.only = TRUE))
+  devtools::install_github("ppernot/FitOCTlib")
+library(lib,character.only = TRUE)
 
 # Options ####
 Sys.setlocale(category = "LC_NUMERIC", locale="C")
@@ -394,6 +399,7 @@ function(input, output, session) {
 
       theta   = extract(fit,'theta')[[1]]
       yGP     = extract(fit,'yGP')[[1]]
+      sigma   = mean(extract(fit,'sigma')[[1]])
       if(prior_PD == 0) {
         resid   = extract(fit,'resid')[[1]]
         mod     = extract(fit,'m')[[1]]
@@ -502,6 +508,7 @@ function(input, output, session) {
       resid = fit$par$resid
       dL    = fit$par$dL
       yGP   = fit$par$yGP
+      sigma = fit$par$sigma
 
       plot(x,y,pch=20,cex=0.5,col=cols[6],
            main='Data fit',
@@ -590,6 +597,14 @@ function(input, output, session) {
         lines(M[,1],M[,2],lty=2)
       }
     }
+
+    resw = res/(uy*sigma)
+    xlim = range(resw)
+    qqnorm(resw, xlim=xlim,ylim=xlim,
+           main='Norm. Q-Q plot of wghtd resid.',
+           col=cols[6], pch=20)
+    abline(a=0,b=1,lty=2)
+    grid();box()
 
   })
 
@@ -868,6 +883,49 @@ function(input, output, session) {
 
   })
 
+  nzCtrlPts   <- function(p=0.95){
+    # Count non-zero (at p% level) ctrl points
+    if (is.null(out <- doExpGP()))
+      return(NULL)
+
+    if(is.null(Inputs$outExpGP))
+      return(NULL)
+
+    fit      = out$fit
+    method   = out$method
+
+    # Get a sample or return NULL
+    if(method == 'sample') {
+      yGP     = extract(fit,'yGP')[[1]]
+
+    } else {
+
+      if(!is.null(fit$theta_tilde)) {
+        S = fit$theta_tilde
+        c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
+        yGP = S[,c]
+
+      } else {
+        return(NULL)
+
+      }
+    }
+
+    # Estimate p% CI on yGP
+    Q = t(
+      apply(
+        yGP,2,
+        function(x)
+          quantile(x,probs = 0.5 + 0.5*p*c(-1,1))
+      )
+    )
+
+    # Count zeros out of p% CI
+    nz = sum( apply(Q,1,prod) > 0)
+
+    return(nz)
+  }
+
   output$resExpGP    <- renderPrint({
     if (is.null(out <- doExpGP()))
       return(NULL)
@@ -890,10 +948,41 @@ function(input, output, session) {
     ndf = N - (Np + Nn + 2)
     CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
 
+    cat('raw br\n')
+    cat('--------------------------------------\n')
     if(prod(CI95-br) >= 0)
       cat('!!! WARNING !!! \n')
-    cat('br       :',signif(br,2),'\n')
-    cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'))
+    cat('br       :',signif(br,2),' ( ndf =',ndf,')\n')
+    cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
+
+    # Correct br by counting only non-zero ctrl points
+    cat('\n')
+    cat('correction from inactive ctrl points\n')
+    cat('------------------------------------\n')
+
+    nz = nzCtrlPts(0.5)
+    if(is.null(nz)) {
+      # Let the user decide by himself
+      for(n in rev(0:Nn)) {
+        nf = N - (Np + n + 2)
+        CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
+        br1  = br * ndf / nf
+        if(prod(CI95-br1) < 0)
+          break
+      }
+      cat('Fit OK if there are less than \n',
+          n+1,' active ctrl points\n')
+
+    } else {
+      cat('Estimated',nz,'active ctrl points\n')
+      nf = N - (Np + nz + 2)
+      CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
+      br1  = br * ndf / nf
+      if(prod(CI95-br1) >= 0)
+        cat('!!! WARNING !!! \n')
+      cat('br       :',signif(br1,2),' ( ndf =',nf,')\n')
+      cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
+    }
 
   })
 
@@ -1022,33 +1111,25 @@ function(input, output, session) {
 
   })
 
-
   output$plotGP      <- renderPlot({
-    # Simulate GP for random modulation curve
-    set.seed(12345)
+    if(is.null(out <- Inputs$outMonoExp))
+      return(NULL)
 
     # Nb control points
     n = input$NnTest
-
-    # Reference model
-    a = 0.05
-    fmod = function (x,a)
-      a*sin(x/a)/x
 
     # Grid
     dx  = 1/(n+1)
     if(input$gridTypeTest == 'internal')
       xdat = seq(dx/2,1-dx/2,length.out = n)
     else
-      xdat = seq(0.0000001,1.00,length.out = n)
-
-    # Control values
-    ydat = fmod(xdat,a)
+      xdat = seq(0.0,1.0,length.out = n)
 
     # Output values and reference
-    np <- 100
-    xp <- seq(0,1,length.out = np)
-    yref = fmod(xp,a)
+    xp <- (Inputs$x-min(Inputs$x)) / (max(Inputs$x)-min(Inputs$x))
+    yref = 0.3*scale(out$fit$par$resid)
+    yref = smooth.spline(xp,yref,df=input$smooth_df)$y
+    ydat = yref[1+round(xdat*(length(xp)-1))]
 
     # Simulated GP
     nRun=100
@@ -1079,7 +1160,7 @@ function(input, output, session) {
     lines(xp,rowMeans(cond),col=cols[6])
     legend('topright',
            legend = c('ctrl. points','GP pred.',
-                      'mean GP pred.','true curve'),
+                      'mean GP pred.','ref. data'),
            col = c(cols[7],col_tr2[4],cols[6],1),
            pch = c(20,NA,NA,NA),
            lty = c(NA,1,1,2),

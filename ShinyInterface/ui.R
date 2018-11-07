@@ -1,5 +1,5 @@
 # Libraries ####
-libs =c('shiny','parallel','rstan','FitOCTLib',
+libs =c('shiny','parallel','rstan',
         'inlmisc','shinycssloaders')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE))
