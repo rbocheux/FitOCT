@@ -86,14 +86,14 @@ if(method == 'sample' || method == 'vb') {
     # Calculate AVerage Exponential Decay
     mExp = x*0
     for (i in 1:nrow(theta))
-      mExp = mExp + theta[i,1]+theta[i,2]*exp(-x/theta[i,3])
+      mExp = mExp + expDecayModel(x,theta[i,1:3])
     mExp = mExp/nrow(theta)
     lines(x,mExp,col=cols[8])
 
   } else {
     if(nMC >0)
       for (i in 1:nMC)
-        lines(x,theta[i,1]+theta[i,2]*exp(-x/theta[i,3]),col=col_tr[7])
+        lines(x,expDecayModel(x,theta[i,1:3]),col=col_tr[7])
   }
 
   legend('topright', bty='n',
@@ -173,7 +173,7 @@ if(method == 'sample' || method == 'vb') {
        main='Data fit',
        xlab='depth (a.u.)',
        ylab='mean OCT signal (a.u.)')
-  lines(x,theta[1]+theta[2]*exp(-x/theta[3]),col=cols[7])
+  lines(x,expDecayModel(x,theta),col=cols[7])
   lines(x,mod, col=cols[4])
 
   legend('topright', bty='n',

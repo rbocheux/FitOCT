@@ -24,11 +24,11 @@ RandomFields::RFoptions(spConform=FALSE)
 # set.seed(1234) # Initialise la graine du RNG
 
 # Color schemes ####
-cols    = inlmisc::GetTolColors(8)
+cols    = inlmisc::GetColors(8)
 # Transparents for spaghetti
-col_tr  = inlmisc::GetTolColors(8,alpha=0.1)
+col_tr  = inlmisc::GetColors(8,alpha=0.1)
 # Darker for legends or fillings
-col_tr2 = inlmisc::GetTolColors(8,alpha=0.4)
+col_tr2 = inlmisc::GetColors(8,alpha=0.4)
 
 # Graphical parameters and functions ####
 pty = 's'
@@ -51,6 +51,10 @@ plotPriPos <- function(pri,pos,tag,xlim=range(c(pri,pos))) {
   d$y = d$y/max(d$y)
   lines(d$x,d$y,col=cols[6])
   polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[6],border=NA)
+}
+
+expDecayModel <- function(x,c) {
+  return( c[1] + c[2] * exp(-2*x/c[3]) )
 }
 
 # Global variables ####
@@ -425,13 +429,13 @@ function(input, output, session) {
         # Calculate AVerage Exponential Decay
         mExp = x*0
         for (i in 1:nrow(theta))
-           mExp = mExp + theta[i,1]+theta[i,2]*exp(-x/theta[i,3])
+           mExp = mExp + expDecayModel(x,theta[i,1:3])
         mExp = mExp/nrow(theta)
         lines(x,mExp,col=cols[7])
       } else {
         if(nMC >0)
           for (i in 1:nMC)
-            lines(x,theta[i,1]+theta[i,2]*exp(-x/theta[i,3]),col=col_tr[7])
+            lines(x,expDecayModel(x,theta[i,1:3]),col=col_tr[7])
       }
 
       legend('topright', bty='n',
@@ -515,7 +519,7 @@ function(input, output, session) {
            xlab='depth (a.u.)',
            ylab='mean OCT signal (a.u.)')
       grid()
-      lines(x,theta[1]+theta[2]*exp(-x/theta[3]),col=cols[7])
+      lines(x,expDecayModel(x,theta),col=cols[7])
       lines(x,mod, col=cols[4])
 
       legend('topright', bty='n',
@@ -663,13 +667,13 @@ function(input, output, session) {
         # Calculate AVerage Exponential Decay
         mExp = x*0
         for (i in 1:nrow(theta))
-          mExp = mExp + theta[i,1]+theta[i,2]*exp(-x/theta[i,3])
+          mExp = mExp + expDecayModel(x,theta[i,1:3])
         mExp = mExp/nrow(theta)
         lines(x,mExp,col=cols[7])
       } else {
         if(nMC >0)
           for (i in 1:nMC)
-            lines(x,theta[i,1]+theta[i,2]*exp(-x/theta[i,3]),col=col_tr[7])
+            lines(x,expDecayModel(x,theta[i,1:3]),col=col_tr[7])
       }
 
       legend('topright', bty='n',
@@ -752,7 +756,7 @@ function(input, output, session) {
            xlab='depth (a.u.)',
            ylab='mean OCT signal (a.u.)')
       grid()
-      lines(x,theta[1]+theta[2]*exp(-x/theta[3]),col=cols[7])
+      lines(x,expDecayModel(x,theta),col=cols[7])
       lines(x,mod, col=cols[4])
 
       legend('topright', bty='n',

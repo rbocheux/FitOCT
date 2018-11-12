@@ -19,6 +19,12 @@ cols    = inlmisc::GetTolColors(8)
 col_tr  = inlmisc::GetTolColors(8,alpha=0.1)
 col_tr2 = inlmisc::GetTolColors(8,alpha=0.4) # For legends
 
+# Misc. functions
+expDecayModel <- function(x,c) {
+  return( c[1] + c[2] * exp(-2*x/c[3]) )
+}
+
+
 # RUN ####
 dataDirs = c("DataWl","Data1","DataSynth")[2]
 for (dataDir in dataDirs) {

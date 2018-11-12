@@ -57,14 +57,14 @@ navbarPage(
       ),
       mainPanel(
         wellPanel(
-          h4("Noise estimation: uy(x) = a_1 * exp( -depth / a_2 )"),
+          h4("Noise estimation: uy(x) = a_1 * exp( -2*depth / a_2 )"),
           plotOutput(
             outputId = 'plotNoise',
             height   = '300px'
           )
         ),
         wellPanel(
-          h4("Monoexponential fit: y(x) = b_1 + b_2  *exp( -depth / b_3 )"),
+          h4("Monoexponential fit: y(x) = b_1 + b_2  *exp( -2*depth / b_3 )"),
           plotOutput(
             outputId = 'plotMonoExp',
             height = '300px'
@@ -111,9 +111,9 @@ navbarPage(
                 numericInput(
                   "nb_warmup",
                   label='nb_warmup',
-                  value = 100,
+                  value = 500,
                   min = 100,
-                  max = 1000,
+                  max = 5000,
                   step = 100,
                   width = "100px"
                 )
@@ -123,7 +123,7 @@ navbarPage(
                 numericInput(
                   "nb_sample",
                   label='nb_sample',
-                  value = 100,
+                  value = 500,
                   min = 100,
                   max = 10000,
                   step = 100,
