@@ -577,6 +577,42 @@ summaryPriExpGP <- function(out) {
   )
 
 }
+nzCtrlPts       <- function(out,p=0.95){
+  # Count non-zero (at p% level) ctrl points
+  fit      = out$fit
+  method   = out$method
+
+  # Get a sample or return NULL
+  if(method == 'sample') {
+    yGP     = extract(fit,'yGP')[[1]]
+
+  } else {
+
+    if(!is.null(fit$theta_tilde)) {
+      S = fit$theta_tilde
+      c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
+      yGP = S[,c]
+
+    } else {
+      return(NULL)
+
+    }
+  }
+
+  # Estimate p% CI on yGP
+  Q = t(
+    apply(
+      yGP,2,
+      function(x)
+        quantile(x,probs = 0.5 + 0.5*p*c(-1,1))
+    )
+  )
+
+  # Count zeros out of p% CI
+  nz = sum( apply(Q,1,prod) > 0)
+
+  return(nz)
+}
 printBr         <- function(br, N, Np, Nn = 0, nz = NULL) {
 
   ndf = N - (Np + Nn)
@@ -857,49 +893,6 @@ function(input, output, session) {
     )
   })
 
-  nzCtrlPts   <- function(p=0.95){
-    # Count non-zero (at p% level) ctrl points
-    if (is.null(out <- doExpGP()))
-      return(NULL)
-
-    if(is.null(Inputs$outExpGP))
-      return(NULL)
-
-    fit      = out$fit
-    method   = out$method
-
-    # Get a sample or return NULL
-    if(method == 'sample') {
-      yGP     = extract(fit,'yGP')[[1]]
-
-    } else {
-
-      if(!is.null(fit$theta_tilde)) {
-        S = fit$theta_tilde
-        c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
-        yGP = S[,c]
-
-      } else {
-        return(NULL)
-
-      }
-    }
-
-    # Estimate p% CI on yGP
-    Q = t(
-      apply(
-        yGP,2,
-        function(x)
-          quantile(x,probs = 0.5 + 0.5*p*c(-1,1))
-      )
-    )
-
-    # Count zeros out of p% CI
-    nz = sum( apply(Q,1,prod) > 0)
-
-    return(nz)
-  }
-
   output$resExpGP    <- renderPrint({
     if (is.null(out <- doExpGP()))
       return(NULL)
@@ -918,7 +911,7 @@ function(input, output, session) {
     C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     # Probability Interval for Birge's ratio
     printBr(br, N = length(C$x), Np = 5,
-            Nn = input$Nn, nz = nzCtrlPts(0.9)
+            Nn = input$Nn, nz = nzCtrlPts(out,0.9)
     )
 
   })

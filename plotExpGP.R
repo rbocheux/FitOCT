@@ -16,11 +16,10 @@ if(fitOut$prior_PD == 0) {
     cat('sigma  :',fit$par$sigma,'\n')
     cat('br     :',br<-fit$par$br,'\n')
   }
-  ndf = N - (3 + Nn + 2)
-  CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf))/ndf
-  if(prod(CI95-br) >= 0)
-    cat('\n!!! WARNING !!! \n')
-  cat('CI95 for br: ',CI95)
+
+  # Probability Interval for Birge's ratio
+  printBr(br, N = length(x), Np = 5,
+          Nn = Nn, nz = nzCtrlPts(fitGP,0.9))
 
   sink()
 }

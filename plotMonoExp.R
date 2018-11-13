@@ -11,14 +11,10 @@ cat('\n MonoExp decay parameters:\n')
 for(i in 1:length(opt))
   cat(paste0('b_',i,' : '),signif(opt[i],3),'\n')
 br = fitm$fit$par$br
-N  = length(x)
-Np = 3
-ndf = N - Np
-CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
-if(prod(CI95-br) >= 0)
-  cat('\n!!! WARNING !!! \n')
-cat('br       :',signif(br,2),'\n')
-cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'))
+
+# Probability Interval for Birge's ratio
+printBr(br, N = length(x), Np = 3)
+
 cat('\n\n')
 sink()
 
