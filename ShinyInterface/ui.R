@@ -252,45 +252,6 @@ navbarPage(
       mainPanel(
         tabsetPanel(
           tabPanel(
-            title = 'Prior',
-            wellPanel(
-              tabsetPanel(
-                tabPanel(
-                  title = 'Predictions',
-                  wellPanel(
-                    withSpinner(
-                      plotOutput(
-                        'plotPriExpGP',
-                        height = '600px'
-                      ),
-                      type = 4
-                    )
-                  )
-                ),
-                tabPanel(
-                  title = 'Statistics',
-                  wellPanel(
-                    DT::dataTableOutput(
-                      'summaryPriOut'
-                    )
-                  )
-                ),
-                tabPanel(
-                  title = 'Traces',
-                  wellPanel(
-                    withSpinner(
-                      plotOutput(
-                        'tracesPriExpGP',
-                        height = '600px'
-                      ),
-                      type = 4
-                    )
-                  )
-                )
-              )
-            )
-          ),
-          tabPanel(
             title = 'Posterior',
             wellPanel(
               tabsetPanel(
@@ -333,6 +294,45 @@ navbarPage(
                       'outExpGP'
                     ),
                     type = 4
+                  )
+                )
+              )
+            )
+          ),
+          tabPanel(
+            title = 'Prior',
+            wellPanel(
+              tabsetPanel(
+                tabPanel(
+                  title = 'Predictions',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'plotPriExpGP',
+                        height = '300px'
+                      ),
+                      type = 4
+                    )
+                  )
+                ),
+                tabPanel(
+                  title = 'Statistics',
+                  wellPanel(
+                    DT::dataTableOutput(
+                      'summaryPriOut'
+                    )
+                  )
+                ),
+                tabPanel(
+                  title = 'Traces',
+                  wellPanel(
+                    withSpinner(
+                      plotOutput(
+                        'tracesPriExpGP',
+                        height = '600px'
+                      ),
+                      type = 4
+                    )
                   )
                 )
               )
@@ -414,6 +414,34 @@ navbarPage(
           plotOutput(
             'plotGP',
             height = '600px'
+          )
+        )
+      )
+    )
+  ),
+  # About ####
+  tabPanel(
+    title="Save",
+    sidebarPanel(
+      wellPanel(
+        h4('Generate report'),
+        fluidRow(
+          column(
+            width = 6,
+            downloadButton(
+              outputId = 'report',
+              label    = 'Download  (Ctrl+Click)'
+            )
+          )
+        ),
+        h4('Save parameters'),
+        fluidRow(
+          column(
+            width = 6,
+            downloadButton(
+              outputId = 'params',
+              label    = 'Download  (Ctrl+Click)'
+            )
           )
         )
       )
