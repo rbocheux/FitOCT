@@ -27,6 +27,51 @@ gPars = list(
   cex=3.5
 )
 
+selX <- function(x,y,depthSel=NULL,subSample=1) {
+  # Apply selectors to inputs
+
+  if(!is.null(depthSel))
+    xSel = which(x >= depthSel[1] &
+                   x <= depthSel[2]  )
+  else
+    xSel = 1:length(x)
+
+  x = x[xSel]; y = y[xSel]
+
+  if(subSample != 1) {
+    xSel = seq(1,length(x),by=subSample)
+    x = x[xSel]; y = y[xSel]
+  }
+  return(list(x=x,y=y))
+}
+
+# Control parameters ####
+
+### Default values / Set values here
+depthSel    = NULL # Otherwise c(xmin,xmax)
+subSample   = 1
+smooth_df   = 15
+method      = c('sample','optim','vb')[1]
+nb_warmup   = 500
+nb_sample   = 1000
+modRange    = 0.5
+ru_theta    = 0.05
+lambda_rate = 0.1
+gridType    = 'internal'
+Nn          = 10
+rho_scale   = 1.0/Nn
+priPost     = TRUE # Compare prior and posterior pdf ?
+
+# Override parameters with control file
+ctrlFile = 'ctrlParams.yaml'
+if (file.exists(ctrlFile)) {
+  ## Get from file
+  lPars = rlist::list.load(ctrlFile)
+  ## Expose parameters
+  for (n in names(lPars))
+    assign(n,rlist::list.extract(lPars,n))
+}
+
 # RUN ####
 dataDirs = c("DataWl","Data1","DataSynth")[2]
 for (dataDir in dataDirs) {
@@ -38,41 +83,39 @@ for (dataDir in dataDirs) {
     tag = paste0(dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')
 
-    ### Get Data
+    ### Get ans select Data
     D = read.csv(paste0(dataDir,'/',dataSet,'/Courbe.csv'))
-    x=D[,1]; y=D[,2]
-    # sel = x > 20 & x<=500 # Exclude aberrant points
-    # x = x[sel]; y = y[sel]
-
+    C = selX(D[,1],D[,2],depthSel,subSample)
+    x = C$x; y = C$y
 
     ### Estimate data uncertainty
-    fits = FitOCTLib::estimateNoise(x, y)
+    fits = FitOCTLib::estimateNoise(x, y, df = smooth_df)
     uy   = fits$uy      # Used by next stages
     ySpl = fits$ySmooth # Used by plotMonoExp
     source ("./plotNoise.R")
 
-    ### Inference of exponential decay parameters
+    ### MAP Inference of exponential decay parameters
     fitm   = FitOCTLib::fitMonoExp(x, y, uy)
     theta0    = fitm$best.theta   # Used by next stage
     cor.theta = fitm$cor.theta
     source ("./plotMonoExp.R")
 
-    ### Inference of modulated decay parameters
-    Nn = 10
-    lambda_rate = 0.1
-    ru_theta    = 0.05
-    priPost     = TRUE
-    method      = c('sample','optim','vb')[1]
-
     # - Posterior Distribution
-    fitGP = FitOCTLib::fitExpGP(x, y, uy, Nn,
-                     method = method,
-                     theta0 = theta0,
-                     cor_theta = cor.theta,
-                     ru_theta = ru_theta,
-                     lambda_rate=lambda_rate,
-                     nb_warmup = 100, nb_iter = 200,
-                     open_progress = FALSE)
+    fitGP = FitOCTLib::fitExpGP(
+      x, y, uy,
+      Nn            = Nn,
+      gridType      = gridType,
+      method        = method,
+      theta0        = theta0,
+      cor_theta     = cor.theta,
+      ru_theta      = ru_theta,
+      lambda_rate   = lambda_rate,
+      rho_scale     = ifelse(rho_scale==0, 1./Nn, rho_scale),
+      nb_warmup     = nb_warmup,
+      nb_iter       = nb_warmup + nb_sample,
+      prior_PD      = 0,
+      open_progress = FALSE
+    )
     fitOut = fitGP
     source ("./plotExpGP.R")
 

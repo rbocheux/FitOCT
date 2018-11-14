@@ -269,9 +269,9 @@ function(input, output, session) {
       updateSliderInput(
         session,
         inputId = 'depthSel',
-        min     = round(rangeX[1]),
-        max     = round(rangeX[2]),
-        value   = round(rangeX),
+        min     = floor(rangeX[1]),
+        max     = ceiling(rangeX[2]),
+        value   = rangeX,
         step    = 1
       )
 
@@ -286,11 +286,15 @@ function(input, output, session) {
     }
   )
 
-  selX <- function(x,y,depthSel,subSample) {
+  selX <- function(x,y,depthSel=NULL,subSample=1) {
     # Apply selectors to inputs
 
-    xSel = which(x >= depthSel[1] &
-                 x <= depthSel[2]  )
+    if(!is.null(depthSel))
+      xSel = which(x >= depthSel[1] &
+                   x <= depthSel[2]  )
+    else
+      xSel = 1:length(x)
+
     x = x[xSel]; y = y[xSel]
 
     if(subSample != 1) {
@@ -299,6 +303,7 @@ function(input, output, session) {
     }
     return(list(x=x,y=y))
   }
+
 
   # Noise estimation ####
   output$plotNoise   <- renderPlot({

@@ -51,5 +51,7 @@ dev.off()
 
 png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000*(2-prior_PD))
-FitOCTLib::plotExpGP(x, y, uy, ySpl, out=fitOut, modScale=0.5, gPars)
+FitOCTLib::plotExpGP(
+  x, y, uy, ySpl, out=fitOut, modScale=modRange, gPars=gPars
+)
 dev.off()

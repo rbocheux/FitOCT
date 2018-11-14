@@ -18,7 +18,5 @@ mod     = fit$par$m
 tagOut  = paste0('Results/',tag,'_MonoExp')
 png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000)
-
 FitOCTLib::plotMonoExp(x, y, uy, ySpl, mod, resid, gPars)
-
 dev.off()

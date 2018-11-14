@@ -1,0 +1,6 @@
+nb_warmup: 100
+nb_sample: 100
+gridType: extremal
+Nn: 15
+rho_scale: 0
+
