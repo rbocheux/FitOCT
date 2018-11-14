@@ -7,10 +7,12 @@ output:
     fig_width: 10
     number_sections: yes
     theme: cerulean
+    toc: TRUE
   pdf_document:
     fig_height: 5
     fig_width: 7
     number_sections: yes
+    toc: TRUE
   word_document:
     fig_height: 5
     fig_width: 10
@@ -59,8 +61,8 @@ if(!is.null(out)) {
 
 ```{r, echo = FALSE}
 if(!is.null(out)) {
-  plotNoise(
-    x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth
+  FitOCTLib::plotNoise(
+    x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth, gPars = gPars
   )
 }
 ```
@@ -72,16 +74,8 @@ if(!is.null(out)) {
 ```{r, echo=FALSE, results='hold'}
 outm = Inputs$outMonoExp
 if(!is.null(outm)) {
-
-  fit  = outm$fit
-  if(outm$method == 'optim') {
-    br = fit$par$br
-  } else {
-    br = mean(extract(fit,pars='br')[[1]])
-  }
-  
   # Probability Interval for Birge's ratio
-  printBr(br, N = length(C$x), Np = 3)
+  FitOCTLib::printBr(outm$fit)
 }
 ```
 
@@ -96,9 +90,10 @@ if(!is.null(outm)) {
 
 ```{r, echo = FALSE}
 if(!is.null(outm)) {
-  plotMonoExp(
+  FitOCTLib::plotMonoExp(
     x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
-    mod=outm$fit$par$m, resid=outm$fit$par$resid
+    mod=outm$fit$par$m, resid=outm$fit$par$resid, 
+    gPars = gPars
   )
 }
 ```
@@ -111,20 +106,8 @@ if(!is.null(outm)) {
 ```{r, echo=FALSE, results='hold'}
 outg = Inputs$outExpGP
 if(!is.null(outg)) {
-  cat('Modulated-exponential model best params\n')
-  cat('---------------------------------------\n')
-  
-  fit = outg$fit
-  if(outg$method == 'optim') {
-    br = fit$par$br
-  } else {
-    br = mean(extract(fit,pars='br')[[1]])
-  }
-  
   # Probability Interval for Birge's ratio
-  printBr(br, N = length(C$x), Np = 5,
-          Nn = input$Nn, nz = nzCtrlPts(0.9)
-  )
+  FitOCTLib::printBr(outg$fit)
 }
 ```
 
@@ -139,14 +122,15 @@ if(!is.null(outg)) {
 
 ```{r, echo = FALSE, fig.height=10}
 if(!is.null(outg)) {
-  plotExpGP(
+  FitOCTLib::plotExpGP(
     x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
-    out=outg, modScale=input$modRange
+    out=outg, modScale=input$modRange, 
+    gPars = gPars
   )
 }
 ```
 
-# Appendices
+# Supplementary Material
 
 ## Diagnostics for Modulated exponential fit
 
@@ -175,9 +159,10 @@ if(!is.null(outp)) {
 
 ```{r, echo = FALSE}
 if(!is.null(outp)) {
-  plotExpGP(
+  FitOCTLib::plotExpGP(
     x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
-    out=outp, modScale=input$modRange
+    out=outp, modScale=input$modRange, 
+    gPars = gPars
   )
 }
 ```
@@ -198,7 +183,7 @@ if(!is.null(outp)) {
 ```{r, echo = FALSE, fig.height=10}
 if(!is.null(outp) & !is.null(outg)) {
   if (outg$method != 'optim') {
-    plotPriPosAll(outp,outg)
+    FitOCTLib::plotPriPostAll(outp$fit,outg$fit,gPars)
   }
 }
 ```

@@ -363,8 +363,8 @@ navbarPage(
     )
   ),
   tabPanel(
-    # Test GP ####
-    title = "Test GP",
+    # GP Designer ####
+    title = "GP-Design",
     sidebarLayout(
       sidebarPanel(
         fluidRow(
@@ -406,6 +406,14 @@ navbarPage(
               step  = 0.01
             )
           )
+        ),
+        actionButton(
+          inputId = 'applyGPDesign',
+          strong('Apply'),
+          icon=icon('stamp')
+        ),
+        tags$style(type='text/css',
+                   "#applyGPDesign { width:100%; margin-top: 25px;}"
         )
       ),
       mainPanel(
@@ -419,7 +427,7 @@ navbarPage(
       )
     )
   ),
-  # About ####
+  # Save ####
   tabPanel(
     title="Save",
     sidebarPanel(
@@ -453,8 +461,8 @@ navbarPage(
     sidebarPanel(
       h5("Author      : P. Pernot"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 0.1"),
-      h5("Date        : 2018/10/28"),
+      h5("Version     : 1.1"),
+      h5("Date        : 2018/11/14"),
       hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/FitOCT","How to cite..."),
       br(),

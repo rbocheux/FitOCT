@@ -14,92 +14,18 @@ options(mc.cores = parallel::detectCores(), width = 90)
 rstan_options(auto_write = TRUE)
 set.seed(1234) # Initialise la graine du RNG
 
-# Color schemes ####
-cols    = inlmisc::GetTolColors(8)
-col_tr  = inlmisc::GetTolColors(8,alpha=0.1)
-col_tr2 = inlmisc::GetTolColors(8,alpha=0.4) # For legends
-
-# Misc. functions
-expDecayModel <- function(x,c) {
-  return( c[1] + c[2] * exp(-2*x/c[3]) )
-}
-nzCtrlPts       <- function(out,p=0.95){
-  # Count non-zero (at p% level) ctrl points
-  fit      = out$fit
-  method   = out$method
-
-  # Get a sample or return NULL
-  if(method == 'sample') {
-    yGP     = extract(fit,'yGP')[[1]]
-
-  } else {
-
-    if(!is.null(fit$theta_tilde)) {
-      S = fit$theta_tilde
-      c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
-      yGP = S[,c]
-
-    } else {
-      return(NULL)
-
-    }
-  }
-
-  # Estimate p% CI on yGP
-  Q = t(
-    apply(
-      yGP,2,
-      function(x)
-        quantile(x,probs = 0.5 + 0.5*p*c(-1,1))
-    )
-  )
-
-  # Count zeros out of p% CI
-  nz = sum( apply(Q,1,prod) > 0)
-
-  return(nz)
-}
-printBr         <- function(br, N, Np, Nn = 0, nz = NULL) {
-
-  ndf = N - (Np + Nn)
-  CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
-
-  if(prod(CI95-br) >= 0)
-    cat('!!! WARNING !!! \n')
-  cat('br       :',signif(br,2),' ( ndf =',ndf,')\n')
-  cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
-
-  if(Nn != 0) {
-    # Correct br by counting only non-zero ctrl points
-    cat('\n')
-    cat('Correction from inactive ctrl points\n')
-    cat('------------------------------------\n')
-
-    if(is.null(nz)) {
-      # Let the user decide by himself
-      for(n in rev(0:Nn)) {
-        nf = N - (Np + n)
-        CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
-        br1  = br * ndf / nf
-        if(prod(CI95-br1) < 0)
-          break
-      }
-      cat('--> Fit OK if there are less than \n',
-          n+1,' active ctrl points\n')
-
-    } else {
-      cat('Estimated',nz,'active ctrl points\n')
-      nf = N - (Np + nz)
-      CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
-      br1  = br * ndf / nf
-      if(prod(CI95-br1) >= 0)
-        cat('!!! WARNING !!! \n')
-      cat('br       :',signif(br1,2),' ( ndf =',nf,')\n')
-      cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
-    }
-
-  }
-}
+# Graphical parameters ####
+gPars = list(
+  cols    = inlmisc::GetColors(8),
+  col_tr  = inlmisc::GetColors(8,alpha=0.1),
+  col_tr2 = inlmisc::GetColors(8,alpha=0.4), # For legends
+  pty='s',
+  mar=c(3,3,1.6,.2),
+  mgp=c(2,.75,0),
+  tcl=-0.5,
+  lwd=6,
+  cex=3.5
+)
 
 # RUN ####
 dataDirs = c("DataWl","Data1","DataSynth")[2]
@@ -123,7 +49,7 @@ for (dataDir in dataDirs) {
     fits = FitOCTLib::estimateNoise(x, y)
     uy   = fits$uy      # Used by next stages
     ySpl = fits$ySmooth # Used by plotMonoExp
-
+    source ("./plotNoise.R")
 
     ### Inference of exponential decay parameters
     fitm   = FitOCTLib::fitMonoExp(x, y, uy)

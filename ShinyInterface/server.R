@@ -24,21 +24,22 @@ RandomFields::RFoptions(spConform=FALSE)
 
 # set.seed(1234) # Initialise la graine du RNG
 
-# Color schemes ####
-cols    = inlmisc::GetColors(8)
-# Transparents for spaghetti
-col_tr  = inlmisc::GetColors(8,alpha=0.1)
-# Darker for legends or fillings
-col_tr2 = inlmisc::GetColors(8,alpha=0.4)
-
 # Graphical parameters ####
-pty = 's'
-mar = c(3,3,1.5,.5)
-mgp = c(2,.75,0)
-tcl = -0.5
-lwd = 2
-cex = 1
+gPars = list(
+  cols    = inlmisc::GetColors(8),
+  # Transparents for spaghetti
+  col_tr  = inlmisc::GetColors(8,alpha=0.1),
+  # Darker for legends or fillings
+  col_tr2 = inlmisc::GetColors(8,alpha=0.4),
+  pty = 's',
+  mar = c(3,3,1.5,.5),
+  mgp = c(2,.75,0),
+  tcl = -0.5,
+  lwd = 2,
+  cex = 1
+)
 
+# Tables output parameters ###
 DTopts = list(
   ordering    = FALSE,
   searching   = FALSE,
@@ -52,352 +53,6 @@ DTopts = list(
 )
 
 # Misc functions ####
-expDecayModel   <- function(x,c) {
-  return( c[1] + c[2] * exp(-2*x/c[3]) )
-}
-plotNoise       <- function(x, y, uy, ySmooth) {
-  par(mfrow=c(1,2),pty=pty,mar=mar,mgp=mgp,tcl=tcl,lwd=lwd, cex=cex)
-
-  # Smooth Fit
-  plot(x,y,pch=20,cex=0.5,col=cols[6],
-       main='Data fit',
-       xlab='depth (a.u.)',
-       ylab='mean OCT signal (a.u.)')
-  grid()
-  lines(x,ySmooth,col=cols[7])
-  legend('topright', bty='n',
-         title = '', title.adj = 1,
-         legend=c('data','smoother'),
-         pch=c(20,NA),lty=c(-1,1),
-         col=c(cols[6],cols[7])
-  )
-  box()
-
-  # Residuals
-  resid   = y - ySmooth
-  ylim=1.2*max(abs(resid))*c(-1,1)
-  res = resid
-  plot(x,res,type='n',
-       ylim=ylim, main='Residuals',
-       xlab='depth (a.u.)',
-       ylab='residuals (a.u.)')
-  grid()
-  abline(h=0)
-  polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
-  points(x,res,pch=20,cex=0.75,col=cols[6])
-  legend('topright', bty='n',
-         title = '', title.adj = 1,
-         legend=c('resid.','data 95% uncert.'),
-         pch=c(20,NA),lty=c(-1,1),lwd=c(1,10),
-         col=c(cols[6],col_tr2[4])
-  )
-  box()
-}
-plotMonoExp     <- function(x, y, uy, ySmooth, mod, resid) {
-  par(mfrow=c(1,2),pty=pty,mar=mar,mgp=mgp,tcl=tcl,lwd=lwd, cex=cex)
-
-  # Fit
-  plot(x,y,pch=20,cex=0.5,col=cols[6],
-       main='Data fit',
-       xlab='depth (a.u.)',
-       ylab='mean OCT signal (a.u.)')
-  grid()
-  lines(x,mod,col=cols[7])
-  legend('topright', bty='n',
-         title = '', title.adj = 1,
-         legend=c('data','best fit'),
-         pch=c(20,NA),lty=c(-1,1),
-         col=c(cols[6],cols[7])
-  )
-  box()
-
-  # Residus
-  ylim=1.2*max(abs(resid))*c(-1,1)
-  res = resid
-  plot(x,res,type='n',
-       ylim=ylim, main='Residuals',
-       xlab='depth (a.u.)',
-       ylab='residuals (a.u.)')
-  grid()
-  abline(h=0)
-  polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
-  points(x,res,pch=20,cex=0.75,col=cols[6])
-  lines(x, ySmooth-mod, col=cols[7])
-  legend('topright', bty='n',
-         title = '(b) ', title.adj = 1,
-         legend=c('mean resid.','data 95% uncert.','best fit - smooth'),
-         pch=c(20,NA,NA),lty=c(-1,1,1),lwd=c(1,10,2),
-         col=c(cols[6],col_tr2[4],cols[7])
-  )
-  box()
-}
-plotExpGP       <- function(x, y, uy, ySmooth, out,
-                        modScale=0.3, nMC=100){
-
-
-  fit      = out$fit
-  method   = out$method
-  xGP      = out$xGP
-  prior_PD = out$prior_PD
-  lasso    = out$lasso
-
-  par(mfrow=c(2-prior_PD,2),pty=pty,mar=mar,mgp=mgp,
-      tcl=tcl,lwd=lwd, cex=cex)
-
-  if(method == 'sample') {
-
-    theta   = extract(fit,'theta')[[1]]
-    yGP     = extract(fit,'yGP')[[1]]
-    sigma   = mean(extract(fit,'sigma')[[1]])
-    if(prior_PD == 0) {
-      resid   = extract(fit,'resid')[[1]]
-      mod     = extract(fit,'m')[[1]]
-      dL      = extract(fit,'dL')[[1]]
-      lp      = extract(fit,'lp__')[[1]]
-      map     = which.max(lp)
-      y_map   = mod[map,]
-    }
-
-    iMC = sample.int(nrow(theta),nMC)
-
-    # Fit
-    plot(x,y,pch=20,cex=0.5,col=cols[6],
-         main='Data fit',
-         xlab='depth (a.u.)',
-         ylab='mean OCT signal (a.u.)')
-    grid()
-    if(prior_PD == 0) {
-      if(nMC >0) {
-        for (i in 1:nMC)
-          lines(x, mod[iMC[i],], col=col_tr[4])
-      }
-      # Calculate AVerage Exponential Decay
-      mExp = x*0
-      for (i in 1:nrow(theta))
-        mExp = mExp + expDecayModel(x,theta[i,1:3])
-      mExp = mExp/nrow(theta)
-      lines(x,mExp,col=cols[7])
-    } else {
-      if(nMC >0)
-        for (i in 1:nMC)
-          lines(x,expDecayModel(x,theta[i,1:3]),col=col_tr[7])
-    }
-
-    legend('topright', bty='n',
-           legend=c('data','mean exp. fit','post. sample'),
-           pch=c(20,NA,NA),lty=c(-1,1,1),
-           col=c(cols[6],cols[7], col_tr2[4])
-    )
-    box()
-
-    if(prior_PD == 0) {
-      # Residuals
-      res = colMeans(resid)
-      ylim=1.2*max(abs(res))*c(-1,1)
-      plot(x,res,type='n',
-           ylim=ylim, main='Residuals',
-           xlab='depth (a.u.)',
-           ylab='residuals (a.u.)')
-      grid(lwd=3); abline(h=0)
-      polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
-      points(x,res,pch=20,cex=0.75,col=cols[6])
-      lines(x, ySmooth-y_map, col=cols[7])
-      legend('topright', bty='n',
-             legend=c('mean resid.','data 95% uncert.','smooth - fit'),
-             pch=c(20,NA,NA),lty=c(-1,1,1),lwd=c(1,6,1),
-             col=c(cols[6],col_tr2[4],cols[7])
-      )
-      box()
-    }
-
-    # Local deviations
-    if(prior_PD == 0) {
-      plot(x, dL[map,], type = 'n',
-           ylim = modScale * c(-1,1),
-           col  = cols[4],
-           main='Deviation from mean depth',
-           xlab = 'depth (a.u.)',
-           ylab = 'relative deviation')
-      abline(h=0)
-      grid()
-      if(nMC >0)
-        for (i in 1:nMC)
-          lines(x, dL[iMC[i],], col=col_tr[4])
-
-    } else {
-      plot(x, x, type = 'n',
-           ylim = modScale*c(-1,1),
-           col  = cols[4],
-           main='Deviation from mean depth',
-           xlab = 'depth (a.u.)',
-           ylab = 'relative deviation')
-      abline(h=0)
-      grid()
-    }
-
-    Q = t(apply(yGP,2,
-                function(x)
-                  quantile(x,probs = c(0.025,0.25,0.75,0.975))
-    )
-    )
-    segments(xGP,Q[,1],xGP,Q[,4],col=cols[7])       # 95 %
-    segments(xGP,Q[,2],xGP,Q[,3],col=cols[6],lwd=6) # 50 %
-
-    legend('topright', bty='n',
-           legend=c('50% CI','95% CI','post. sample'),
-           pch=NA ,lty=c(1,1,1),lwd=c(6,2,2),
-           col=c(cols[6],cols[7],col_tr2[4])
-    )
-    box()
-
-  } else {
-
-    theta = fit$par$theta
-    mod   = fit$par$m
-    resid = fit$par$resid
-    dL    = fit$par$dL
-    yGP   = fit$par$yGP
-    sigma = fit$par$sigma
-
-    plot(x,y,pch=20,cex=0.5,col=cols[6],
-         main='Data fit',
-         xlab='depth (a.u.)',
-         ylab='mean OCT signal (a.u.)')
-    grid()
-    lines(x,expDecayModel(x,theta),col=cols[7])
-    lines(x,mod, col=cols[4])
-
-    legend('topright', bty='n',
-           legend=c('data','expo. best fit','best fit'),
-           pch=c(20,NA,NA),lty=c(-1,1,1),
-           col=c(cols[6],cols[7], col_tr2[4])
-    )
-    box()
-
-    # Residus
-    ylim=1.2*max(abs(resid))*c(-1,1)
-    res = resid
-    plot(x,res,type='n',
-         ylim=ylim, main='Residuals',
-         xlab='depth (a.u.)',
-         ylab='residuals (a.u.)')
-    grid()
-    abline(h=0)
-    polygon(c(x,rev(x)),c(-2*uy,rev(2*uy)),col=col_tr2[4],border = NA)
-    points(x,res,pch=20,cex=0.75,col=cols[6])
-    lines(x, ySmooth - mod, col=cols[7])
-    legend('topright', bty='n',
-           legend=c('mean resid.','data 95% uncert.','smooth - fit'),
-           pch=c(20,NA,NA),lty=c(-1,1,1),lwd=c(1,6,1),
-           col=c(cols[6],col_tr2[4],cols[7])
-    )
-    box()
-
-    # Local deviations
-    plot(x, dL, type = 'l',
-         ylim = modScale*c(-1,1),
-         col  = cols[4],
-         main = 'Deviation from mean depth',
-         xlab = 'depth (a.u.)',
-         ylab = 'relative deviation')
-    grid()
-    abline(h=0)
-
-    if(!is.null(fit$theta_tilde)) {
-      S = fit$theta_tilde
-      iMC = sample.int(nrow(S),nMC)
-
-      c = which(grepl(pattern = 'dL\\[', x=colnames(S)))
-      for (i in 1:nMC)
-        lines(x, S[iMC[i],c], col=col_tr[4])
-
-      c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
-      yGP = S[iMC,c]
-      Q = t(apply(yGP,2,
-                  function(x)
-                    quantile(x,probs = c(0.025,0.25,0.75,0.975))
-      )
-      )
-      segments(xGP,Q[,1],xGP,Q[,4],col=cols[7])       # 95 %
-      segments(xGP,Q[,2],xGP,Q[,3],col=cols[6],lwd=6) # 50 %
-      legend('topright', bty='n',
-             legend=c('50% CI','95% CI','post. sample'),
-             pch=NA ,lty=c(1,1,1),lwd=c(6,2,2),
-             col=c(cols[6],cols[7],col_tr2[4])
-      )
-
-    } else {
-      points(xGP,yGP,pch=19,col=cols[7])
-      segments(xGP,yGP,xGP,0*yGP,col=cols[7])
-      legend('topright', bty='n',
-             legend=c('ctrl points','modulation'),
-             pch=c(19,NA) ,lty=c(1,1),lwd=c(-1,2),
-             col=c(cols[7],cols[4])
-      )
-    }
-    box()
-  }
-
-  # if(prior_PD == 0) {
-  #   # Plot true modulation for synthetic signals
-  #   fName = paste0('./Modulation.csv')
-  #   if(file.exists(fName)) {
-  #     M = read.csv(fName)
-  #     lines(M[,1],M[,2],lty=2)
-  #   }
-  # }
-
-  if(prior_PD == 0) {
-    # QQ-plot of weighted residuals
-    resw = res/(uy*sigma)
-    xlim = range(resw)
-    qqnorm(resw, xlim=xlim,ylim=xlim,
-           main='Norm. Q-Q plot of wghtd resid.',
-           col=cols[6], pch=20)
-    abline(a=0,b=1,lty=2)
-    grid();box()
-  }
-
-}
-plotPriPos      <- function(pri,pos,tag,xlim=range(c(pri,pos))) {
-  # Plot overlapped densities for 2 samples
-  d = density(pri)
-  d$y = d$y/max(d$y)
-  plot(d, type = 'l', col = cols[4],
-       main = tag,
-       xlab = '', xlim = xlim,
-       ylab = 'Norm. density', ylim = c(0,1.1), yaxs = 'i')
-  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[4],border=NA)
-  d = density(pos)
-  d$y = d$y/max(d$y)
-  lines(d$x,d$y,col=cols[6])
-  polygon(d$x,d$y,rev(d$w),0*d$y,col=col_tr2[6],border=NA)
-}
-plotPriPosAll   <- function(fitGP_pri,fitGP){
-  theta_pri   = rstan::extract(fitGP_pri$fit,'theta')[[1]]
-  yGP_pri     = rstan::extract(fitGP_pri$fit,'yGP')[[1]]
-  lambda_pri  = rstan::extract(fitGP_pri$fit,'lambda')[[1]]
-  sigma_pri   = rstan::extract(fitGP_pri$fit,'sigma')[[1]]
-
-  theta_pos   = rstan::extract(fitGP$fit,'theta')[[1]]
-  yGP_pos     = rstan::extract(fitGP$fit,'yGP')[[1]]
-  lambda_pos  = rstan::extract(fitGP$fit,'lambda')[[1]]
-  sigma_pos   = rstan::extract(fitGP$fit,'sigma')[[1]]
-
-  nPar = ncol(theta_pri) + ncol(yGP_pri) + 2
-  ncol = 4
-  nrow = floor(nPar / ncol)
-  if(ncol*nrow < nPar) nrow = nrow + 1
-  par(mfrow=c(nrow,ncol),pty=pty,mar=mar,
-      mgp=mgp,tcl=tcl,lwd=lwd, cex=cex)
-
-  for(i in 1:ncol(theta_pri))
-    plotPriPos(theta_pri[,i],theta_pos[,i],paste0('theta_',i))
-  plotPriPos(lambda_pri,lambda_pos,'lambda')
-  plotPriPos(sigma_pri,sigma_pos,'sigma')
-  for(i in 1:ncol(yGP_pri))
-    plotPriPos(yGP_pri[,i],yGP_pos[,i],paste0('yGP_',i),0.5*c(-1,1))
-}
 summaryNoise    <- function(out){
   fit = out$fit
   if (out$method == 'optim') {
@@ -577,83 +232,6 @@ summaryPriExpGP <- function(out) {
   )
 
 }
-nzCtrlPts       <- function(out,p=0.95){
-  # Count non-zero (at p% level) ctrl points
-  fit      = out$fit
-  method   = out$method
-
-  # Get a sample or return NULL
-  if(method == 'sample') {
-    yGP     = extract(fit,'yGP')[[1]]
-
-  } else {
-
-    if(!is.null(fit$theta_tilde)) {
-      S = fit$theta_tilde
-      c = which(grepl(pattern = 'yGP\\[', x=colnames(S)))
-      yGP = S[,c]
-
-    } else {
-      return(NULL)
-
-    }
-  }
-
-  # Estimate p% CI on yGP
-  Q = t(
-    apply(
-      yGP,2,
-      function(x)
-        quantile(x,probs = 0.5 + 0.5*p*c(-1,1))
-    )
-  )
-
-  # Count zeros out of p% CI
-  nz = sum( apply(Q,1,prod) > 0)
-
-  return(nz)
-}
-printBr         <- function(br, N, Np, Nn = 0, nz = NULL) {
-
-  ndf = N - (Np + Nn)
-  CI95 = c(qchisq(0.025,df=ndf),qchisq(0.975,df=ndf)) / ndf
-
-  if(prod(CI95-br) >= 0)
-    cat('!!! WARNING !!! \n')
-  cat('br       :',signif(br,2),' ( ndf =',ndf,')\n')
-  cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
-
-  if(Nn != 0) {
-    # Correct br by counting only non-zero ctrl points
-    cat('\n')
-    cat('Correction from inactive ctrl points\n')
-    cat('------------------------------------\n')
-
-    if(is.null(nz)) {
-      # Let the user decide by himself
-      for(n in rev(0:Nn)) {
-        nf = N - (Np + n)
-        CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
-        br1  = br * ndf / nf
-        if(prod(CI95-br1) < 0)
-          break
-      }
-      cat('--> Fit OK if there are less than \n',
-          n+1,' active ctrl points\n')
-
-    } else {
-      cat('Estimated',nz,'active ctrl points\n')
-      nf = N - (Np + nz)
-      CI95 = c(qchisq(0.025,df=nf),qchisq(0.975,df=nf)) / nf
-      br1  = br * ndf / nf
-      if(prod(CI95-br1) >= 0)
-        cat('!!! WARNING !!! \n')
-      cat('br       :',signif(br1,2),' ( ndf =',nf,')\n')
-      cat('CI95(br) :',paste0(signif(CI95,2),collapse='-'),'\n')
-    }
-
-  }
-}
 
 # Global variables ####
 Inputs = reactiveValues(
@@ -740,8 +318,8 @@ function(input, output, session) {
     Inputs$outMonoExp <<- NULL
     Inputs$outExpGP   <<- NULL
 
-    plotNoise(
-      x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth
+    FitOCTLib::plotNoise(
+      x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth, gPars=gPars
     )
 
   })
@@ -762,9 +340,10 @@ function(input, output, session) {
     Inputs$outMonoExp <<- outm
     Inputs$outExpGP   <<- NULL
 
-    plotMonoExp(
+    FitOCTLib::plotMonoExp(
       x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
-      mod=outm$fit$par$m, resid=outm$fit$par$resid
+      mod=outm$fit$par$m, resid=outm$fit$par$resid,
+      gPars=gPars
     )
 
   })
@@ -787,14 +366,9 @@ function(input, output, session) {
       for(i in 1:length(opt))
         cat(paste0('b_',i,' : '),signif(opt[i],3),'\n')
 
-      br = fit$par$br
-    } else {
-      br = mean(extract(fit,pars='br')[[1]])
     }
-
-    # Probability Interval for Birge's ratio
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
-    printBr(br, N = length(C$x), Np = 3)
+    cat('\n')
+    FitOCTLib::printBr(fit)
 
   })
 
@@ -887,9 +461,10 @@ function(input, output, session) {
 
     C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
-    plotExpGP(
+    FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
-      out = out, modScale = input$modRange
+      out = out, modScale = input$modRange,
+      gPars = gPars
     )
   })
 
@@ -900,19 +475,8 @@ function(input, output, session) {
     if(is.null(Inputs$outExpGP))
       return(NULL)
 
-    fit = out$fit
-
-    if(out$method == 'optim') {
-      br = fit$par$br
-    } else {
-      br = mean(extract(fit,pars='br')[[1]])
-    }
-
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     # Probability Interval for Birge's ratio
-    printBr(br, N = length(C$x), Np = 5,
-            Nn = input$Nn, nz = nzCtrlPts(out,0.9)
-    )
+    FitOCTLib::printBr(out$fit)
 
   })
 
@@ -962,9 +526,10 @@ function(input, output, session) {
 
     C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
-    plotExpGP(
+    FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
-      out = out, modScale = input$modRange
+      out = out, modScale = input$modRange,
+      gPars = gPars
     )
   })
 
@@ -999,11 +564,24 @@ function(input, output, session) {
     if(fitGP$method != 'sample')
       return(NULL)
 
-    plotPriPosAll(fitGP_pri,fitGP)
+    FitOCTLib::plotPriPostAll(fitGP_pri$fit,fitGP$fit,
+                              gPars = gPars)
 
   })
 
-  # Test GP ####
+  # GP-Design ####
+  doApplyGPDesign <- observeEvent(
+    input$applyGPDesign,
+    {
+      updateRadioButtons(session, 'gridType',
+                         selected = input$gridTypeTest)
+      updateNumericInput(session, 'Nn',
+                         value   = input$NnTest)
+      updateSliderInput(session, 'rho_scale',
+                        value   = input$rho_scaleTest)
+    }
+  )
+
   output$plotGP      <- renderPlot({
     if(is.null(out <- Inputs$outMonoExp))
       return(NULL)
@@ -1019,7 +597,8 @@ function(input, output, session) {
       xdat = seq(0.0,1.0,length.out = n)
 
     # Output values and reference
-    xp <- (Inputs$x-min(Inputs$x)) / (max(Inputs$x)-min(Inputs$x))
+    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    xp <- (C$x-min(C$x)) / (max(C$x)-min(C$x))
     yref = 0.3*scale(out$fit$par$resid)
     yref = smooth.spline(xp,yref,df=input$smooth_df)$y
     ydat = yref[1+round(xdat*(length(xp)-1))]
@@ -1040,8 +619,13 @@ function(input, output, session) {
       n=nRun,
     )
 
+    # Extract graphical params
+    for (n in names(gPars))
+      assign(n,list.extract(gPars,n))
+
     par(mfrow=c(1,1),pty=pty,mar=mar,mgp=mgp,
         tcl=tcl,lwd=1.5*lwd, cex=1.5*cex)
+
     plot(xdat,ydat,pch=20,col=cols[7],
          xlim = c(0,1),
          ylim = 1.2*c(-1,1),
