@@ -7,7 +7,7 @@ for(i in 1:length(opt))
 cat('\n\n')
 
 # Probability Interval for Birge's ratio
-FitOCTLib::printBr(fitm$fit)
+br = FitOCTLib::printBr(fitm$fit)
 sink()
 
 # Plots

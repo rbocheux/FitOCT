@@ -1,6 +1,7 @@
 # - Prior (Predictive) Distribution
 fitGP_pri = FitOCTLib::fitExpGP(
   x, y, uy,
+  dataType      = dataType,
   Nn            = Nn,
   gridType      = gridType,
   method        = 'sample',

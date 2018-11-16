@@ -49,6 +49,7 @@ selX <- function(x,y,depthSel=NULL,subSample=1) {
 
 ### Default values / Set values here
 depthSel    = NULL # Otherwise c(xmin,xmax)
+dataType    = 2    # Intensity
 subSample   = 1
 smooth_df   = 15
 method      = c('sample','optim','vb')[1]
@@ -95,14 +96,17 @@ for (dataDir in dataDirs) {
     source ("./plotNoise.R")
 
     ### MAP Inference of exponential decay parameters
-    fitm   = FitOCTLib::fitMonoExp(x, y, uy)
+    fitm   = FitOCTLib::fitMonoExp(x, y, uy, dataType = dataType)
     theta0    = fitm$best.theta   # Used by next stage
     cor.theta = fitm$cor.theta
     source ("./plotMonoExp.R")
 
+    if(is.null(br$alert)) break # Monoexp fit OK, no need to try fitExpGP
+
     # - Posterior Distribution
     fitGP = FitOCTLib::fitExpGP(
       x, y, uy,
+      dataType      = dataType,
       Nn            = Nn,
       gridType      = gridType,
       method        = method,
