@@ -329,6 +329,15 @@ function(input, output, session) {
 
   })
 
+  output$resNoise  <- renderPrint({
+    if (is.null(out <- Inputs$outSmooth))
+      return(NULL)
+    a    = out$theta
+    for(i in 1:length(a))
+      cat(paste0('a_',i,' : '),signif(a[i],3),'\n')
+
+  })
+
   # Mono-exponential fit ####
   output$plotMonoExp <- renderPlot({
     if(is.null(Inputs$outSmooth))
@@ -339,7 +348,7 @@ function(input, output, session) {
     out  = Inputs$outSmooth
 
     outm = FitOCTLib::fitMonoExp(
-      x=C$x, y=C$y, uy=out$uy
+      x=C$x, y=C$y, uy=out$uy, dataType = as.numeric(input$dataType)
     )
 
     Inputs$outMonoExp <<- outm
@@ -357,16 +366,16 @@ function(input, output, session) {
     if (is.null(Inputs$outMonoExp))
       return(NULL)
 
-    out  = Inputs$outSmooth
-    a    = out$theta
-
     outm = Inputs$outMonoExp
     fit  = outm$fit
 
-    if(outm$method == 'optim') {
-      for(i in 1:length(a))
-        cat(paste0('a_',i,' : '),signif(a[i],3),'\n')
+    dataType = 'Amplitude'
+    if(input$dataType==2)
+      dataType = 'Intensity'
 
+    if(outm$method == 'optim') {
+      cat('Data Type :',dataType,'\n')
+      cat('c   : ',input$dataType,'\n\n')
       opt = unlist(fit$par[['theta']],use.names = TRUE)
       for(i in 1:length(opt))
         cat(paste0('b_',i,' : '),signif(opt[i],3),'\n')
@@ -396,6 +405,7 @@ function(input, output, session) {
       x         = x,
       y         = y,
       uy        = Inputs$outSmooth[['uy']],
+      dataType = as.numeric(input$dataType),
       method    = ifelse(prior_PD == 0,
                          input$method,
                          'sample'),
@@ -403,7 +413,7 @@ function(input, output, session) {
       cor_theta = outm$cor.theta,
       ru_theta  = input$ru_theta,
       nb_warmup = input$nb_warmup,
-      prior_PD  =  prior_PD,
+      prior_PD  = prior_PD,
       nb_iter   = input$nb_warmup + input$nb_sample,
       Nn        = input$Nn,
       rho_scale = ifelse(input$rho_scale==0,
@@ -468,6 +478,7 @@ function(input, output, session) {
     outS = Inputs$outSmooth
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
+      dataType = as.numeric(input$dataType),
       out = out, modScale = input$modRange,
       gPars = gPars
     )
@@ -533,6 +544,7 @@ function(input, output, session) {
     outS = Inputs$outSmooth
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
+      dataType = as.numeric(input$dataType),
       out = out, modScale = input$modRange,
       gPars = gPars
     )
@@ -616,12 +628,13 @@ function(input, output, session) {
       rho = 1/n
 
     cond = RandomFields::RFsimulate(
-      model = RMgauss(var=input$alpha_scaleTest*sd(ydat),
-                      scale=rho),
-      x=xp,
+      model = RMgauss(
+        var   = input$alpha_scaleTest*sd(ydat),
+        scale = rho, Aniso = NULL, proj = NULL),
+      x     = xp,
       given = list(x=xdat),
       data  = list(y=ydat),
-      n=nRun,
+      n     = nRun,
     )
 
     # Extract graphical params
@@ -655,6 +668,7 @@ function(input, output, session) {
   # Save ####
   listCtrlParams <- function() {
     list(
+      dataType    = input$dataType,
       depthSel    = input$depthSel,
       subSample   = input$subSample,
       smooth_df   = input$smooth_df,

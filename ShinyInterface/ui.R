@@ -23,6 +23,14 @@ navbarPage(
           multiple= FALSE,
           accept  = c('.txt','.csv')
         ),
+        radioButtons(
+          inputId = 'dataType',
+          label   = 'Data type',
+          choices = c('Amplitude' = 1,
+                      'Intensity' = 2),
+          selected = 2,
+          inline = TRUE
+        ),
         hr(style="border-color: #666;"),
         sliderInput(
           inputId = 'depthSel',
@@ -41,35 +49,48 @@ navbarPage(
           step  = 1,
           sep = ''
         ),
-        hr(style="border-color: #666;"),
-        sliderInput(
-          inputId = 'smooth_df',
-          label   = 'Smoothing level',
-          min     = 2,
-          max     = 30,
-          value   = 15
-        ),
         hr(style='border-color: #666;'),
-        h5('Fit results'),
-        verbatimTextOutput(
-          'resMonoExp'
+        tabsetPanel(
+          tabPanel(
+            title = 'Noise',
+            wellPanel(
+              sliderInput(
+                inputId = 'smooth_df',
+                label   = 'Smoothing level',
+                min     = 2,
+                max     = 30,
+                value   = 15
+              ),
+              verbatimTextOutput(
+                'resNoise'
+              )
+            )
+          ),
+          tabPanel(
+            title = 'MonoExp',
+            verbatimTextOutput(
+              'resMonoExp'
+            )
+          ),
+          type = 'pills',
+          selected = 'MonoExp'
         )
       ),
       mainPanel(
-        wellPanel(
-          h4("Noise estimation: uy(x) = a_1 * exp( -2*depth / a_2 )"),
-          plotOutput(
-            outputId = 'plotNoise',
-            height   = '300px'
+          wellPanel(
+            h4("Noise estimation: uy(x) = a_1 * exp( -depth / a_2 )"),
+            plotOutput(
+              outputId = 'plotNoise',
+              height   = '300px'
+            )
+          ),
+          wellPanel(
+            h4("Monoexponential fit: y(x) = b_1 + b_2 * exp( -c*depth / b_3 )"),
+            plotOutput(
+              outputId = 'plotMonoExp',
+              height = '300px'
+            )
           )
-        ),
-        wellPanel(
-          h4("Monoexponential fit: y(x) = b_1 + b_2  *exp( -2*depth / b_3 )"),
-          plotOutput(
-            outputId = 'plotMonoExp',
-            height = '300px'
-          )
-        )
       )
     )
   ),
