@@ -482,8 +482,8 @@ navbarPage(
     sidebarPanel(
       h5("Author      : P. Pernot"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 1.1"),
-      h5("Date        : 2018/11/14"),
+      h5("Version     : 1.3"),
+      h5("Date        : 2018/11/19"),
       hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/FitOCT","How to cite..."),
       br(),
