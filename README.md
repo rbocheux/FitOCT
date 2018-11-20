@@ -9,7 +9,7 @@ Fit of OCT decays using R/stan
 
 `FitOCT.R` enables to treat batches of OCT files.
 
-Companion scripts: `plotMonoExp.R`, `plotExpGP.R` and `priPost.R`.
+Depends on scripts: `plotNoise.R`, `plotMonoExp.R`, `plotExpGP.R` and `priPost.R`.
 
 (`GP2.R` is deprecated in releases above 0.2).
 
