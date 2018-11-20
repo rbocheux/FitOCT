@@ -125,7 +125,7 @@ if(!is.null(outg)) {
   FitOCTLib::plotExpGP(
     x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
     out=outg, modScale=input$modRange, 
-    gPars = gPars, dataType = input$dataType
+    gPars = gPars, dataType = as.numeric(input$dataType)
   )
 }
 ```
@@ -162,7 +162,7 @@ if(!is.null(outp)) {
   FitOCTLib::plotExpGP(
     x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
     out=outp, modScale=input$modRange, 
-    gPars = gPars, dataType = input$dataType
+    gPars = gPars, dataType = as.numeric(input$dataType)
   )
 }
 ```
