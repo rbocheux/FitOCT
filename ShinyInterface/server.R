@@ -32,7 +32,7 @@ gPars = list(
   # Darker for legends or fillings
   col_tr2 = inlmisc::GetColors(8,alpha=0.4),
   pty = 's',
-  mar = c(3,3,1.5,.5),
+  mar = c(3.2,3,1.5,.5),
   mgp = c(2,.75,0),
   tcl = -0.5,
   lwd = 2,
@@ -209,7 +209,7 @@ summaryExpGP    <- function(out){
     DT::formatRound(columns = "n_eff", digits = 0)
   }
 }
-summaryPriExpGP <- function(out) {
+summaryPriExpGP <- function(out){
   fit  = out$fit
 
   pars = c('theta','yGP','lambda','sigma')
@@ -241,6 +241,7 @@ Inputs = reactiveValues(
   outSmooth   = NULL,
   outMonoExp  = NULL,
   outExpGP    = NULL,
+  outPriExp   = NULL,
   outPriExpGP = NULL,
   fitOut      = NULL
 )
@@ -286,31 +287,12 @@ function(input, output, session) {
     }
   )
 
-  selX <- function(x,y,depthSel=NULL,subSample=1) {
-    # Apply selectors to inputs
-
-    if(!is.null(depthSel))
-      xSel = which(x >= depthSel[1] &
-                   x <= depthSel[2]  )
-    else
-      xSel = 1:length(x)
-
-    x = x[xSel]; y = y[xSel]
-
-    if(subSample != 1) {
-      xSel = seq(1,length(x),by=subSample)
-      x = x[xSel]; y = y[xSel]
-    }
-    return(list(x=x,y=y))
-  }
-
-
   # Noise estimation ####
   output$plotNoise   <- renderPlot({
     if(is.null(Inputs$x))
       return(NULL)
 
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
 
     if(!is.finite(IQR(C$x)))
       return(NULL) # Protect smooth.spline from zero tol
@@ -340,12 +322,10 @@ function(input, output, session) {
 
   # Mono-exponential fit ####
   output$plotMonoExp <- renderPlot({
-    if(is.null(Inputs$outSmooth))
+    if(is.null(out <- Inputs$outSmooth))
       return(NULL)
 
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
-
-    out  = Inputs$outSmooth
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
 
     outm = FitOCTLib::fitMonoExp(
       x=C$x, y=C$y, uy=out$uy, dataType = as.numeric(input$dataType)
@@ -363,10 +343,9 @@ function(input, output, session) {
   })
 
   output$resMonoExp  <- renderPrint({
-    if (is.null(Inputs$outMonoExp))
+    if (is.null(outm <- Inputs$outMonoExp))
       return(NULL)
 
-    outm = Inputs$outMonoExp
     fit  = outm$fit
 
     dataType = 'Amplitude'
@@ -388,32 +367,38 @@ function(input, output, session) {
 
   # Modulated exponential fit ####
   runExpGP <-function(prior_PD = 0) {
-    if(is.null(Inputs$outMonoExp))
-      return(NULL)
 
-    outm  = Inputs$outMonoExp
-
-    isolate({
-      C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
-      x = C$x; y = C$y
-    })
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    x = C$x; y = C$y
+    uy = Inputs$outSmooth[['uy']]
+    dataType  = as.numeric(input$dataType)
 
     log_file = file.path(session_dir, "stan.log")
     dummy = suppressWarnings(unlink(log_file))
     sink(log_file)
+
+    # if(is.null(priExp <- Inputs$outPriExp)) {
+      priExp = FitOCTLib::estimateExpPrior(
+        x         = x,
+        uy        = uy,
+        dataType  = dataType,
+        priorType = input$priorType,
+        out       = Inputs$outMonoExp,
+        ru_theta  = input$ru_theta
+      )
+      Inputs$outPriExp <<- priExp
+    # }
+
     out <- FitOCTLib::fitExpGP(
       x         = x,
       y         = y,
-      uy        = Inputs$outSmooth[['uy']],
-      dataType = as.numeric(input$dataType),
-      method    = ifelse(prior_PD == 0,
-                         input$method,
-                         'sample'),
-      theta0    = outm$best.theta,
-      cor_theta = outm$cor.theta,
-      ru_theta  = input$ru_theta,
-      nb_warmup = input$nb_warmup,
+      uy        = uy,
+      dataType  = dataType,
       prior_PD  = prior_PD,
+      method    = ifelse(prior_PD == 0,input$method,'sample'),
+      theta0    = priExp$theta0,
+      Sigma0    = priExp$Sigma0,
+      nb_warmup = input$nb_warmup,
       nb_iter   = input$nb_warmup + input$nb_sample,
       Nn        = input$Nn,
       rho_scale = ifelse(input$rho_scale==0,
@@ -428,13 +413,14 @@ function(input, output, session) {
     return(out)
   }
 
-  doExpGP <- eventReactive(
+  observeEvent(
     input$runExpGP,
     {
-      out = runExpGP()
-      Inputs$outExpGP <<- out
-      return(out)
-    }
+      updateTabsetPanel(
+        session = session,
+        inputId = 'tabsetPriPost',
+        selected = 'Posterior')
+      Inputs$outExpGP <<- runExpGP()}
   )
 
   do_progress = function(file) {
@@ -468,13 +454,9 @@ function(input, output, session) {
   #outputOptions(output, "outExpGP",suspendWhenHidden = FALSE)
 
   output$plotExpGP   <- renderPlot({
-    if (is.null(out <- doExpGP()))
+    if(is.null(out <- Inputs$outExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outExpGP))
-      return(NULL)
-
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
@@ -485,63 +467,48 @@ function(input, output, session) {
   })
 
   output$resExpGP    <- renderPrint({
-    if (is.null(out <- doExpGP()))
+    if(is.null(out <- Inputs$outExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outExpGP))
-      return(NULL)
-
     # Probability Interval for Birge's ratio
     FitOCTLib::printBr(out$fit)
-
   })
 
   output$summaryOut  <- DT::renderDataTable({
-    if (is.null(out <- try(doExpGP(),silent=TRUE)))
+    if(is.null(out <- Inputs$outExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outExpGP))
-      return(NULL)
-
     summaryExpGP(out)
-
   })
 
   output$tracesExpGP <- renderPlot({
-    if (is.null(out <- doExpGP()))
+    if(is.null(out <- Inputs$outExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outExpGP))
-      return(NULL)
-
     if (out$method == 'optim')
       return(NULL)
-
     fit  = out$fit
     pars = c('theta','yGP','lambda','sigma','br')
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = pars))
-
   })
 
   # Prior pdf ####
-  doPriExpGP <- eventReactive(
+  observeEvent(
     input$runPriExpGP,
     {
-      out = runExpGP(prior_PD = 1)
-      Inputs$outPriExpGP <<- out
-      return(out)
+      # updateTabsetPanel(
+      #   session = session,
+      #   inputId = 'tabsetPriPost',
+      #   selected = 'Prior')
+      Inputs$outPriExp   <<- NULL
+      Inputs$outPriExpGP <<- runExpGP(prior_PD = 1)
     }
   )
 
   output$plotPriExpGP   <- renderPlot({
-    if (is.null(out <- doPriExpGP()))
+    if(is.null(out <- Inputs$outPriExpGP))
       return(NULL)
 
-    if(is.null(Inputs$outPriExpGP))
-      return(NULL)
-
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
+
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
       dataType = as.numeric(input$dataType),
@@ -551,35 +518,34 @@ function(input, output, session) {
   })
 
   output$summaryPriOut  <- DT::renderDataTable({
-    if (is.null(out <- try(doPriExpGP(),silent=TRUE)))
+    if(is.null(out <- Inputs$outPriExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outPriExpGP))
-      return(NULL)
-
     summaryPriExpGP(out)
-
   })
 
   output$tracesPriExpGP <- renderPlot({
-    if (is.null(out <- doPriExpGP()))
+    if(is.null(out <- Inputs$outPriExpGP))
       return(NULL)
-
-    if(is.null(Inputs$outPriExpGP))
-      return(NULL)
-
     fit  = out$fit
     pars = c('theta','yGP','lambda','sigma')
     print(rstan::traceplot(fit, inc_warmup=TRUE, pars = pars))
-
   })
 
   output$priPostExpGP   <- renderPlot({
-    if (is.null(fitGP <- doExpGP()) ||
-        is.null(fitGP_pri <- doPriExpGP()))
+    if (is.null(fitGP     <- Inputs$outExpGP) ||
+        is.null(fitGP_pri <- Inputs$outPriExpGP))
       return(NULL)
-    if(fitGP$method != 'sample')
-      return(NULL)
+
+    validate(
+      need(
+        fitGP$method == 'sample',
+        'Please sample from posterior first !'
+        ),
+      need(
+        all(fitGP_pri$xGP == fitGP$xGP),
+        'Please re-simulate prior with\n same parameters as posterior !'
+        )
+    )
 
     FitOCTLib::plotPriPostAll(fitGP_pri$fit,fitGP$fit,
                               gPars = gPars)
@@ -587,7 +553,18 @@ function(input, output, session) {
   })
 
   # GP-Design ####
-  doApplyGPDesign <- observeEvent(
+  observeEvent(
+    input$cloneGPDesign,
+    {
+      updateRadioButtons(session, 'gridTypeTest',
+                         selected = input$gridType)
+      updateNumericInput(session, 'NnTest',
+                         value   = input$Nn)
+      updateSliderInput(session, 'rho_scaleTest',
+                        value   = input$rho_scale)
+    }
+  )
+  observeEvent(
     input$applyGPDesign,
     {
       updateRadioButtons(session, 'gridType',
@@ -614,7 +591,7 @@ function(input, output, session) {
       xdat = seq(0.0,1.0,length.out = n)
 
     # Output values and reference
-    C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+    C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     xp <- (C$x-min(C$x)) / (max(C$x)-min(C$x))
     yref = 0.3*scale(out$fit$par$resid)
     yref = smooth.spline(xp,yref,df=input$smooth_df)$y

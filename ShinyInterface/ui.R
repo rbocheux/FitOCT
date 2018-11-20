@@ -121,7 +121,7 @@ navbarPage(
                 icon=icon('gear')
               ),
               tags$style(type='text/css',
-                         "#runExpGP { width:200%; margin-top: 0px;}")
+                         "#runExpGP {margin-top: 0px;}")
             )
           ),
           conditionalPanel(
@@ -158,57 +158,48 @@ navbarPage(
         h4('Controls'),
         tabsetPanel(
           tabPanel(
-            title = 'Prior',
+            title = 'Prior-Exp',
             wellPanel(
               fluidRow(
                 column(
                   width = 6,
-                  numericInput(
-                    "ru_theta",
-                    label='ru_theta',
-                    value = 0.05,
-                    min = 0.01,
-                    max = 0.5,
-                    step = 0.01,
-                    width = "100px"
+                  radioButtons(
+                    inputId = 'priorType',
+                    label   = 'Prior type',
+                    choices = c('ABC'     = 'abc',
+                                'MonoExp' = 'mono'
+                                ),
+                    selected = 'abc',
+                    inline = FALSE
                   )
                 ),
                 column(
                   width = 6,
-                  actionButton(
-                    inputId = 'runPriExpGP',
-                    strong("Simul."),
-                    icon=icon('gear')
-                  ),
-                  tags$style(type='text/css',
-                             "#runPriExpGP { width:100%; margin-top: 25px;}"
-                  )
-                )
-              ),
-              fluidRow(
-                column(
-                  width = 10,
-                  sliderInput(
-                    'lambda_rate',
-                    label='lambda_rate',
-                    value = 0.1,
-                    min   = 0.0,
-                    max   = 0.5,
-                    step  = 0.01
+                  conditionalPanel(
+                    condition = "input.priorType == 'mono'",
+                    numericInput(
+                      "ru_theta",
+                      label='ru_theta',
+                      value = 0.05,
+                      min = 0.01,
+                      max = 0.5,
+                      step = 0.01,
+                      width = "100px"
+                    )
                   )
                 )
               )
             )
           ),
           tabPanel(
-            title = 'GP',
+            title = 'Prior-GP',
             wellPanel(
               fluidRow(
                 column(
                   width = 6,
                   numericInput(
                     "Nn",
-                    label='Nb. ctrl',
+                    label='Ctrl. points',
                     value = 10,
                     min = 5,
                     max = 20,
@@ -229,7 +220,18 @@ navbarPage(
               ),
               fluidRow(
                 column(
-                  width = 10,
+                  width = 6,
+                  sliderInput(
+                    'lambda_rate',
+                    label='lambda',
+                    value = 0.1,
+                    min   = 0.0,
+                    max   = 0.5,
+                    step  = 0.01
+                  )
+                ),
+                column(
+                  width = 6,
                   sliderInput(
                     'rho_scale',
                     label='rho',
@@ -238,15 +240,12 @@ navbarPage(
                     max   = 1.0,
                     step  = 0.01
                   )
-                ),
-                column(
-                  width = 6
                 )
               )
             )
           ),
           tabPanel(
-            title = 'Graphics',
+            title = 'Graphs',
             wellPanel(
               fluidRow(
                 column(
@@ -262,7 +261,8 @@ navbarPage(
                 )
               )
             )
-          )
+          ),
+          type = 'pills'
         ),
         hr( style="border-color: #666;"),
         h4("Fit results"),
@@ -323,6 +323,19 @@ navbarPage(
           tabPanel(
             title = 'Prior',
             wellPanel(
+              fluidRow(
+                column(
+                  width=6,
+                  actionButton(
+                    inputId = 'runPriExpGP',
+                    strong("Simulate"),
+                    icon=icon('gear')
+                  ),
+                  tags$style(type='text/css',
+                             "#runPriExpGP { margin-bottom: 25px;}"
+                  )
+                )
+              ),
               tabsetPanel(
                 tabPanel(
                   title = 'Predictions',
@@ -378,7 +391,8 @@ navbarPage(
               )
             )
           ),
-          type='pills'
+          id   = 'tabsetPriPost',
+          type = 'pills'
         )
       )
     )
@@ -393,7 +407,7 @@ navbarPage(
             width = 5,
             numericInput(
               inputId = 'NnTest',
-              label='Nb. ctrl',
+              label='Ctrl. points',
               value = 10,
               min = 5,
               max = 20,
@@ -428,13 +442,29 @@ navbarPage(
             )
           )
         ),
-        actionButton(
-          inputId = 'applyGPDesign',
-          strong('Apply'),
-          icon=icon('stamp')
-        ),
-        tags$style(type='text/css',
-                   "#applyGPDesign { width:100%; margin-top: 25px;}"
+        fluidRow(
+          column(
+            width = 5,
+            actionButton(
+              inputId = 'cloneGPDesign',
+              strong('Clone'),
+              icon=icon('clone')
+            ),
+            tags$style(type='text/css',
+                       "#cloneGPDesign { width:100%; margin-top: 25px;}"
+            )
+          ),
+          column(
+            width = 5,
+            actionButton(
+              inputId = 'applyGPDesign',
+              strong('Apply'),
+              icon=icon('stamp')
+            ),
+            tags$style(type='text/css',
+                       "#applyGPDesign { width:100%; margin-top: 25px;}"
+            )
+          )
         )
       ),
       mainPanel(
@@ -482,8 +512,8 @@ navbarPage(
     sidebarPanel(
       h5("Author      : P. Pernot"),
       h5("Affiliation : CNRS"),
-      h5("Version     : 1.3"),
-      h5("Date        : 2018/11/19"),
+      h5("Version     : 1.31"),
+      h5("Date        : 2018/11/20"),
       hr( style="border-color: #666;"),
       a(href="https://github.com/ppernot/FitOCT","How to cite..."),
       br(),

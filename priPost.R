@@ -5,14 +5,13 @@ fitGP_pri = FitOCTLib::fitExpGP(
   Nn            = Nn,
   gridType      = gridType,
   method        = 'sample',
-  theta0        = theta0,
-  cor_theta     = cor.theta,
-  ru_theta      = ru_theta,
+  theta0        = priExp$theta0,
+  Sigma0        = priExp$Sigma0,
   lambda_rate   = lambda_rate,
   rho_scale     = ifelse(rho_scale==0, 1./Nn, rho_scale),
   nb_warmup     = nb_warmup,
   nb_iter       = nb_warmup + nb_sample,
-  prior_PD = 1,
+  prior_PD      = 1,
   open_progress = FALSE
 )
 fitOut = fitGP_pri

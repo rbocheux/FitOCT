@@ -43,7 +43,7 @@ cat('Configuration Parameters\n')
 cat('------------------------\n')
 str(listCtrlParams(),give.head=FALSE, give.length=FALSE)
 
-C = selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
+C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
 ```
 
 
