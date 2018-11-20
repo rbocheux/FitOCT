@@ -1,5 +1,6 @@
 # Graphical Interface to FitOCT
 
-Download the `server.R` and `ui.R` files and run any of them in `R`.
+Download the `server.R`, `ui.R` and `reportTemplate` files 
+and run any of the first two in `R`.
 
 You will need to install [`FitOCTLib`](https://github.com/ppernot/FitOCTlib).

@@ -11,7 +11,9 @@ Fit of OCT decays using R/stan
 
 Depends on scripts: `plotNoise.R`, `plotMonoExp.R`, `plotExpGP.R` and `priPost.R`.
 
-(`GP2.R` is deprecated in releases above 0.2).
+You will need to install [`FitOCTLib`](https://github.com/ppernot/FitOCTlib).
+
+(Standalone `GP2.R` is deprecated in releases above 0.2).
 
 
 ## Graphical version
