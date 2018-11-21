@@ -277,13 +277,15 @@ function(input, output, session) {
       )
 
       # Store data and empty buffers
-      Inputs$x          <<- dat[,1]
-      Inputs$y          <<- dat[,2]
-      Inputs$outSmooth  <<- NULL
-      Inputs$outMonoExp <<- NULL
-      Inputs$outExpGP   <<- NULL
-      Inputs$fitOut     <<- NULL
-      Inputs$xSel       <<- 1:length(Inputs$x)
+      Inputs$x           <<- dat[,1]
+      Inputs$y           <<- dat[,2]
+      Inputs$outSmooth   <<- NULL
+      Inputs$outMonoExp  <<- NULL
+      Inputs$outExpGP    <<- NULL
+      Inputs$outPriExp   <<- NULL
+      Inputs$outPriExpGP <<- NULL
+      Inputs$fitOut      <<- NULL
+      Inputs$xSel        <<- 1:length(Inputs$x)
     }
   )
 
@@ -377,17 +379,18 @@ function(input, output, session) {
     dummy = suppressWarnings(unlink(log_file))
     sink(log_file)
 
-    # if(is.null(priExp <- Inputs$outPriExp)) {
+    if(is.null(priExp <- Inputs$outPriExp)) {
       priExp = FitOCTLib::estimateExpPrior(
         x         = x,
         uy        = uy,
         dataType  = dataType,
         priorType = input$priorType,
         out       = Inputs$outMonoExp,
-        ru_theta  = input$ru_theta
+        ru_theta  = input$ru_theta,
+        eps       = 1e-3
       )
       Inputs$outPriExp <<- priExp
-    # }
+    }
 
     out <- FitOCTLib::fitExpGP(
       x         = x,
@@ -420,7 +423,9 @@ function(input, output, session) {
         session = session,
         inputId = 'tabsetPriPost',
         selected = 'Posterior')
-      Inputs$outExpGP <<- runExpGP()}
+      Inputs$outExpGP <<- NULL
+      Inputs$outExpGP <<- runExpGP()
+    }
   )
 
   do_progress = function(file) {
@@ -498,6 +503,7 @@ function(input, output, session) {
       #   inputId = 'tabsetPriPost',
       #   selected = 'Prior')
       Inputs$outPriExp   <<- NULL
+      Inputs$outPriExpGP <<- NULL
       Inputs$outPriExpGP <<- runExpGP(prior_PD = 1)
     }
   )
@@ -657,7 +663,8 @@ function(input, output, session) {
       lambda_rate = input$lambda_rate,
       gridType    = input$gridType,
       Nn          = input$Nn,
-      rho_scale   = input$rho_scale
+      rho_scale   = input$rho_scale,
+      priorType   = input$priorType
     )
   }
 

@@ -71,7 +71,7 @@ for (dataDir in dataDirs) {
 
   dataSets = list.dirs(path=dataDir,full.names = FALSE)[-1]
 
-  for(dataSet in dataSets[4]) {
+  for(dataSet in dataSets[1:3]) {
 
     tag = paste0(dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')
@@ -98,7 +98,8 @@ for (dataDir in dataDirs) {
     ### Prior
     priExp = FitOCTLib::estimateExpPrior(
       x, uy, dataType, priorType,
-      out = fitm, ru_theta = ru_theta
+      out = fitm, ru_theta = ru_theta,
+      eps = 1e-3
     )
 
     # - Posterior Distribution
