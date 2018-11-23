@@ -17,14 +17,17 @@ set.seed(1234) # Initialise la graine du RNG
 # Graphical parameters ####
 gPars = list(
   cols    = inlmisc::GetColors(8),
-  col_tr  = inlmisc::GetColors(8,alpha=0.1),
-  col_tr2 = inlmisc::GetColors(8,alpha=0.4), # For legends
-  pty='s',
-  mar=c(3,3,1.6,.2),
-  mgp=c(2,.75,0),
-  tcl=-0.5,
-  lwd=6,
-  cex=3.5
+  col_tr  = inlmisc::GetColors(8,alpha=0.1), # Light, for spaghetti curves
+  col_tr2 = inlmisc::GetColors(8,alpha=0.4), # Darker, for legends...
+  pty     = 's',
+  mar     = c(3,3,1.6,.2),
+  mgp     = c(2,.75,0),
+  tcl     = -0.5,
+  lwd     = 6,
+  cex     = 3.5,
+  xlabel  = 'stromal depth (µm)',
+  plot_title = '',
+  graphTable = TRUE
 )
 
 # Control parameters ####
@@ -71,7 +74,7 @@ for (dataDir in dataDirs) {
 
   dataSets = list.dirs(path=dataDir,full.names = FALSE)[-1]
 
-  for(dataSet in dataSets[1:3]) {
+  for(dataSet in dataSets[4]) {
 
     tag = paste0(dataDir,'_',dataSet)
     cat(tag,'------------------------','\n')

@@ -18,5 +18,8 @@ mod     = fit$par$m
 tagOut  = paste0('Results/',tag,'_MonoExp')
 png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000)
-FitOCTLib::plotMonoExp(x, y, uy, ySpl, mod, resid, gPars)
+gPars$plot_title = 'Mono-exponential fit'
+FitOCTLib::plotMonoExp(x, y, uy, ySpl, mod, resid,
+                       gPars, dataType, br)
+gPars$plot_title = ''
 dev.off()

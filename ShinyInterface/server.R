@@ -36,7 +36,10 @@ gPars = list(
   mgp = c(2,.75,0),
   tcl = -0.5,
   lwd = 2,
-  cex = 1
+  cex = 1,
+  xlabel  = 'stromal depth (µm)',
+  plot_title = NULL,
+  graphTable = FALSE
 )
 
 # Tables output parameters ###
@@ -307,9 +310,11 @@ function(input, output, session) {
     Inputs$outMonoExp <<- NULL
     Inputs$outExpGP   <<- NULL
 
+    gPars$plot_title = 'Noise estimation'
     FitOCTLib::plotNoise(
       x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth, gPars=gPars
     )
+    gPars$plot_title = ''
 
   })
 
@@ -336,11 +341,15 @@ function(input, output, session) {
     Inputs$outMonoExp <<- outm
     Inputs$outExpGP   <<- NULL
 
+    gPars$plot_title = 'Mono-exponential fit'
     FitOCTLib::plotMonoExp(
       x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth,
       mod=outm$fit$par$m, resid=outm$fit$par$resid,
-      gPars=gPars
+      gPars=gPars,
+      dataType = as.numeric(input$dataType),
+      br = FitOCTLib::printBr(fit = outm$fit,silent = TRUE)
     )
+    gPars$plot_title = ''
 
   })
 
@@ -463,12 +472,18 @@ function(input, output, session) {
       return(NULL)
     C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
+
+    gPars$plot_title = 'Modulated exp. fit'
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
       dataType = as.numeric(input$dataType),
       out = out, modScale = input$modRange,
-      gPars = gPars
+      gPars = gPars,
+      br = FitOCTLib::printBr(fit = out$fit,silent = TRUE)
+
     )
+    gPars$plot_title = ' '
+
   })
 
   output$resExpGP    <- renderPrint({
@@ -515,12 +530,14 @@ function(input, output, session) {
     C = FitOCTLib::selX(Inputs$x,Inputs$y,input$depthSel,input$subSample)
     outS = Inputs$outSmooth
 
+    gPars$plot_title = 'Prior exp. sample'
     FitOCTLib::plotExpGP(
       C$x, C$y, outS$uy, outS$ySmooth,
       dataType = as.numeric(input$dataType),
       out = out, modScale = input$modRange,
       gPars = gPars
     )
+    gPars$plot_title = ' '
   })
 
   output$summaryPriOut  <- DT::renderDataTable({

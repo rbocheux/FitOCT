@@ -19,7 +19,7 @@ if(fitOut$prior_PD == 0) {
   cat('\n\n')
 
   # Probability Interval for Birge's ratio
-  FitOCTLib::printBr(fit)
+  br = FitOCTLib::printBr(fit)
   sink()
 }
 
@@ -51,8 +51,10 @@ dev.off()
 
 png(filename = paste0(tagOut,'_results.png'),
     width=2000, height=1000*(2-prior_PD))
+gPars$plot_title = 'Modulated exp. fit'
 FitOCTLib::plotExpGP(
   x, y, uy, ySpl, out=fitOut, modScale=modRange, gPars=gPars,
-  dataType = dataType
+  dataType = dataType, br = br
 )
+gPars$plot_title = ' '
 dev.off()
