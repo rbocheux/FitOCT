@@ -2,7 +2,7 @@
 libs =c('shiny','parallel','rstan','knitr',
         'inlmisc','shinycssloaders','DT',
         'RandomFields','stringr','devtools',
-        'rmarkdown','rlist')
+        'rmarkdown','rlist','digest')
 for (lib in libs ) {
   if(!require(lib,character.only = TRUE))
     install.packages(lib,dependencies=TRUE)
@@ -246,7 +246,9 @@ Inputs = reactiveValues(
   outExpGP    = NULL,
   outPriExp   = NULL,
   outPriExpGP = NULL,
-  fitOut      = NULL
+  fitOut      = NULL,
+  priHash     = NULL,
+  posHash     = NULL
 )
 
 # MAIN ####
@@ -288,6 +290,8 @@ function(input, output, session) {
       Inputs$outPriExp   <<- NULL
       Inputs$outPriExpGP <<- NULL
       Inputs$fitOut      <<- NULL
+      Inputs$priHash     <<- NULL
+      Inputs$posHash     <<- NULL
       Inputs$xSel        <<- 1:length(Inputs$x)
     }
   )
@@ -421,6 +425,19 @@ function(input, output, session) {
       open_progress = FALSE
     )
     sink()
+
+    # Builds hash based on prior-defining parameters
+    hash <- digest::digest(
+      list(
+        input$priorType, input$ru_theta, input$rho_scale,
+        input$Nn, input$lambda_rate, input$gridType
+      ),
+      errormode= "silent"
+    )
+    if(prior_PD == 1)
+      Inputs$priHash <<- hash
+    else
+      Inputs$posHash <<- hash
 
     return(out)
   }
@@ -565,7 +582,7 @@ function(input, output, session) {
         'Please sample from posterior first !'
         ),
       need(
-        all(fitGP_pri$xGP == fitGP$xGP),
+        Inputs$priHash == Inputs$posHash,
         'Please re-simulate prior with\n same parameters as posterior !'
         )
     )
