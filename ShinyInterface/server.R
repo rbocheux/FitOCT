@@ -316,7 +316,7 @@ function(input, output, session) {
 
     gPars$plot_title = 'Noise estimation'
     FitOCTLib::plotNoise(
-      x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth, gPars=gPars
+      x=C$x, y=C$y, uy=out$uy, ySmooth=out$ySmooth, gPars=gPars, as.numeric(input$dataType)
     )
     gPars$plot_title = ''
 
